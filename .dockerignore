@@ -1,0 +1,17 @@
+.env
+.env.*
+.venv
+.git
+.cache
+.pytest_cache
+.ruff_cache
+__pycache__
+storage
+*.docx
+*.md
+tests
+.submission-archive
+dist
+tmp
+output
+evaluation

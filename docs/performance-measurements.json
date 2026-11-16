@@ -1,0 +1,66 @@
+{
+  "measured_at": "2026-11-16T06:08:30.840187+00:00",
+  "scope": "Local single-client read-only smoke benchmark; no LLM generation and no load test",
+  "samples": [
+    {
+      "operation": "health",
+      "requests": 5,
+      "latency_ms": [
+        12.62,
+        6.51,
+        4.94,
+        6.29,
+        5.05
+      ],
+      "median_ms": 6.29,
+      "p95_nearest_rank_ms": 12.62,
+      "returned_counts": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "operation": "library",
+      "requests": 5,
+      "latency_ms": [
+        18.42,
+        10.63,
+        10.67,
+        10.9,
+        10.59
+      ],
+      "median_ms": 10.67,
+      "p95_nearest_rank_ms": 18.42,
+      "returned_counts": [
+        5,
+        5,
+        5,
+        5,
+        5
+      ]
+    },
+    {
+      "operation": "search",
+      "requests": 5,
+      "latency_ms": [
+        97.32,
+        84.93,
+        86.32,
+        366.27,
+        170.79
+      ],
+      "median_ms": 97.32,
+      "p95_nearest_rank_ms": 366.27,
+      "returned_counts": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ]
+    }
+  ]
+}

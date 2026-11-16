@@ -1,0 +1,56 @@
+{
+  "dataset_id": "financial-v1",
+  "schema_version": 1,
+  "cases": 30,
+  "created_on": "2026-11-15",
+  "reference_date": "2026-11-15",
+  "label_origin": "curated from fixture specifications and verified PDF evidence; independent of evaluated model answers",
+  "documents": [
+    {
+      "file": "01_finance_controls_2025.pdf",
+      "pages": 3,
+      "sha256": "4091b682202ec00888245218cdfa0c386301aecbee391c03ee1fd52cf15c79b2",
+      "reviewer_can_read": true,
+      "effective_from": "2025-01-01",
+      "effective_to": "2026-01-01"
+    },
+    {
+      "file": "02_finance_controls_2026.pdf",
+      "pages": 3,
+      "sha256": "3ac5d1cea512c417299b656659766ad7f399f38f793f0d3cc9328dc58af662fc",
+      "reviewer_can_read": true,
+      "effective_from": "2026-01-01",
+      "effective_to": null
+    },
+    {
+      "file": "03_exception_authority_2026.pdf",
+      "pages": 3,
+      "sha256": "05b6f8e27d3a77fb31e81187594cf0e19a86a1b26c6773f06decbb5b57ff3052",
+      "reviewer_can_read": true,
+      "effective_from": "2026-01-01",
+      "effective_to": null
+    },
+    {
+      "file": "04_regional_destruction_2026.pdf",
+      "pages": 3,
+      "sha256": "7261841b1ac13217b31dac01993c943bdecb0d37546258d73f6dded69dd6fce6",
+      "reviewer_can_read": true,
+      "effective_from": "2026-01-01",
+      "effective_to": null
+    },
+    {
+      "file": "05_delegation_register_restricted_2026.pdf",
+      "pages": 3,
+      "sha256": "062a5811c6295b67690546e28fc8e0370275e44dd773a140052637b7fca58cdf",
+      "reviewer_can_read": false,
+      "effective_from": "2026-01-01",
+      "effective_to": null
+    }
+  ],
+  "split_policy": "small corpus: development regression set only; keep a separate unseen corpus for honest model-selection claims",
+  "limitations": [
+    "Term matching is a diagnostic, not semantic truth.",
+    "Provider failures are blocked, not correct abstentions.",
+    "No Pandas, OCR-image robustness, production load or real financial advice claims."
+  ]
+}

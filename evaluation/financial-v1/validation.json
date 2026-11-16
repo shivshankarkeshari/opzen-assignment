@@ -1,0 +1,8 @@
+{
+  "dataset_id": "financial-v1",
+  "cases": 30,
+  "pdfs": 5,
+  "pages": 15,
+  "verified_evidence_references": 55,
+  "validation": "passed"
+}

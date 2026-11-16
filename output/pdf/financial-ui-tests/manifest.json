@@ -1,0 +1,47 @@
+[
+  {
+    "filename": "01_finance_controls_2025.pdf",
+    "title": "Finance Controls Policy 1.0 (2025)",
+    "type": "policy",
+    "department": "Finance",
+    "effective_from": "2025-01-01",
+    "effective_to": "2026-01-01",
+    "share": true
+  },
+  {
+    "filename": "02_finance_controls_2026.pdf",
+    "title": "Finance Controls Policy 2.0 (2026)",
+    "type": "policy",
+    "department": "Finance",
+    "effective_from": "2026-01-01",
+    "effective_to": null,
+    "share": true
+  },
+  {
+    "filename": "03_exception_authority_2026.pdf",
+    "title": "Exception Authority Procedure (EXC-2026)",
+    "type": "procedure",
+    "department": "Compliance",
+    "effective_from": "2026-01-01",
+    "effective_to": null,
+    "share": true
+  },
+  {
+    "filename": "04_regional_destruction_2026.pdf",
+    "title": "Regional Destruction Standard (RDS-2026)",
+    "type": "policy",
+    "department": "Operations",
+    "effective_from": "2026-01-01",
+    "effective_to": null,
+    "share": true
+  },
+  {
+    "filename": "05_delegation_register_restricted_2026.pdf",
+    "title": "Restricted Delegation Register (DR-2026)",
+    "type": "guideline",
+    "department": "Finance",
+    "effective_from": "2026-01-01",
+    "effective_to": null,
+    "share": false
+  }
+]

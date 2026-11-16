@@ -1,0 +1,316 @@
+[
+  {
+    "scenario": "API uses selected generation model",
+    "passed": true
+  },
+  {
+    "scenario": "Five ready PDFs in analyst library",
+    "passed": true
+  },
+  {
+    "scenario": "Reviewer sees four documents",
+    "passed": true
+  },
+  {
+    "scenario": "Cross-page subsection expansion",
+    "passed": true
+  },
+  {
+    "scenario": "Exact source revision opens",
+    "passed": true
+  },
+  {
+    "scenario": "Historical evidence scope",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-001 saved answer renders",
+    "passed": true,
+    "run_id": "21f867b0-e367-4b26-9d87-bb98d0105a48",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-001 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-002 saved answer renders",
+    "passed": true,
+    "run_id": "0018a9b5-cbc5-469f-92ee-3e1300e6d5fb",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-002 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-003 saved answer renders",
+    "passed": true,
+    "run_id": "de24b374-78d2-4e9d-8fa4-3d309e9fafbb",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-003 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-004 saved answer renders",
+    "passed": true,
+    "run_id": "397a4d43-14a7-44d1-afef-ae5b66b5e6b8",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-004 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-005 saved answer renders",
+    "passed": true,
+    "run_id": "e6256036-35ef-4f45-a666-7f7bd3286867",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-005 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-006 saved answer renders",
+    "passed": true,
+    "run_id": "d001c08e-4b30-4a9d-97e5-8122cc5a204f",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-006 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-007 saved answer renders",
+    "passed": true,
+    "run_id": "c4f3e08f-5044-4288-a6ed-17a8b25262bb",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-007 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-008 saved answer renders",
+    "passed": true,
+    "run_id": "94fec56f-f29f-483d-93cf-4bea3b148232",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-008 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-009 saved answer renders",
+    "passed": true,
+    "run_id": "7879901d-e174-4561-9369-dedbe792542e",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-009 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-010 saved answer renders",
+    "passed": true,
+    "run_id": "d3ef5572-83e2-4341-84cd-9e34bb88310b",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-010 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-011 saved answer renders",
+    "passed": true,
+    "run_id": "3ba6a0f4-d15b-4390-827b-3f69a8f5f999",
+    "answer_quality": false
+  },
+  {
+    "scenario": "FIN-011 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-012 saved answer renders",
+    "passed": true,
+    "run_id": "5302fb15-9fda-4d8a-922d-96b3ec7aea36",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-012 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-013 saved answer renders",
+    "passed": true,
+    "run_id": "a5c6f100-7a9d-4dd3-9396-79603cf040f9",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-013 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-014 saved answer renders",
+    "passed": true,
+    "run_id": "042446e7-63c3-4deb-b32d-58451679df5e",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-014 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-015 saved answer renders",
+    "passed": true,
+    "run_id": "50e842d2-2720-4db2-a22b-ff901b41c624",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-015 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-016 saved answer renders",
+    "passed": true,
+    "run_id": "99f71c4d-5ab6-427b-b2b6-2cda3cbb528b",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-016 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-017 saved answer renders",
+    "passed": true,
+    "run_id": "0e1e97fa-b159-4aa6-b175-1825713fffbf",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-017 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-018 saved answer renders",
+    "passed": true,
+    "run_id": "25a7b74b-911e-4d3a-a99e-74b1f72b0c51",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-018 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-019 saved answer renders",
+    "passed": true,
+    "run_id": "84484d48-8bc1-45af-a3de-f6cf2b7a4a2c",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-019 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-020 saved answer renders",
+    "passed": true,
+    "run_id": "08641d1f-fe90-42ae-b514-db58ebade0a8",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-020 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-021 saved answer renders",
+    "passed": true,
+    "run_id": "d145fc32-36c8-4cb3-8089-ac5ca7a2eefa",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-021 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-022 saved answer renders",
+    "passed": true,
+    "run_id": "18949f56-efac-4aac-a221-bf9776d6f565",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-022 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-023 saved answer renders",
+    "passed": true,
+    "run_id": "90447b9a-46be-4bb5-8213-47b21afa3fb2",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-023 clarification control renders",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-024 saved answer renders",
+    "passed": true,
+    "run_id": "3866a55b-2075-4a3e-8a2b-6cdef2c4388a",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-024 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-025 saved answer renders",
+    "passed": true,
+    "run_id": "1ca9c4ce-95c3-4059-b9cd-a95b99a35fcc",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-025 unsupported answer is visible",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-026 saved answer renders",
+    "passed": true,
+    "run_id": "9fc28ac0-ea47-4adc-904f-dc8e8fd20c35",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-026 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-027 saved answer renders",
+    "passed": true,
+    "run_id": "24f14d8e-6280-4d6c-bc0c-89774f6213ad",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-027 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-029 saved answer renders",
+    "passed": true,
+    "run_id": "a615a951-3a03-41ba-9ec1-54d290162a5d",
+    "answer_quality": true
+  },
+  {
+    "scenario": "FIN-029 citation source controls render",
+    "passed": true
+  },
+  {
+    "scenario": "FIN-030 saved answer renders",
+    "passed": true,
+    "run_id": "9a5915e4-8316-491e-829b-f58d3e88005f",
+    "answer_quality": false
+  },
+  {
+    "scenario": "FIN-030 citation source controls render",
+    "passed": true
+  }
+]

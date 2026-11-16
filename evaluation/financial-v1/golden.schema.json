@@ -1,0 +1,261 @@
+{
+  "$defs": {
+    "Checks": {
+      "additionalProperties": false,
+      "properties": {
+        "max_agent_iterations": {
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Max Agent Iterations",
+          "type": "integer"
+        },
+        "exact_citation_quotes": {
+          "title": "Exact Citation Quotes",
+          "type": "boolean"
+        },
+        "current_access_required": {
+          "title": "Current Access Required",
+          "type": "boolean"
+        },
+        "provider_failures_are_blocked_not_passed": {
+          "title": "Provider Failures Are Blocked Not Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "max_agent_iterations",
+        "exact_citation_quotes",
+        "current_access_required",
+        "provider_failures_are_blocked_not_passed"
+      ],
+      "title": "Checks",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "title": "Document",
+          "type": "string"
+        },
+        "page": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "quote": {
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document",
+        "page",
+        "quote"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Expected": {
+      "additionalProperties": false,
+      "properties": {
+        "answerability": {
+          "enum": [
+            "answerable",
+            "partial",
+            "unanswerable",
+            "clarification"
+          ],
+          "title": "Answerability",
+          "type": "string"
+        },
+        "reference_answer": {
+          "title": "Reference Answer",
+          "type": "string"
+        },
+        "required_facts": {
+          "items": {
+            "$ref": "#/$defs/Fact"
+          },
+          "title": "Required Facts",
+          "type": "array"
+        },
+        "minimum_distinct_cited_documents": {
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Minimum Distinct Cited Documents",
+          "type": "integer"
+        },
+        "forbidden_answer_strings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Answer Strings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "answerability",
+        "reference_answer",
+        "required_facts",
+        "minimum_distinct_cited_documents",
+        "forbidden_answer_strings"
+      ],
+      "title": "Expected",
+      "type": "object"
+    },
+    "Fact": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "statement": {
+          "title": "Statement",
+          "type": "string"
+        },
+        "answer_terms_any": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Answer Terms Any",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "statement",
+        "answer_terms_any",
+        "evidence"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "current",
+            "effective_on",
+            "selected_versions"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "documents": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Documents",
+          "type": "array"
+        },
+        "effective_on": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Effective On"
+        }
+      },
+      "required": [
+        "mode",
+        "documents",
+        "effective_on"
+      ],
+      "title": "Scope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "pattern": "^FIN-\\d{3}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "category": {
+      "title": "Category",
+      "type": "string"
+    },
+    "question": {
+      "title": "Question",
+      "type": "string"
+    },
+    "actor": {
+      "enum": [
+        "analyst",
+        "reviewer"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "expected": {
+      "$ref": "#/$defs/Expected"
+    },
+    "checks": {
+      "$ref": "#/$defs/Checks"
+    },
+    "review_notes": {
+      "title": "Review Notes",
+      "type": "string"
+    },
+    "parent_case_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Case Id"
+    },
+    "clarification_reply": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Clarification Reply"
+    }
+  },
+  "required": [
+    "id",
+    "category",
+    "question",
+    "actor",
+    "scope",
+    "expected",
+    "checks",
+    "review_notes"
+  ],
+  "title": "GoldenCase",
+  "type": "object"
+}

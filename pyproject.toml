@@ -1,0 +1,56 @@
+[project]
+name = "opzen-documents"
+version = "0.1.0"
+description = "Document intelligence workspace"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "docling>=2.60,<3",
+  "fastapi>=0.115,<1",
+  "httpx>=0.28,<1",
+  "groq>=0.30,<2",
+  "langfuse>=3,<5",
+  "langgraph>=1,<2",
+  "langgraph-checkpoint-postgres>=3,<4",
+  "minio>=7.2,<8",
+  "onnxruntime>=1.20,<2",
+  "pgvector>=0.4,<1",
+  "psycopg[binary,pool]>=3.2,<4",
+  "pydantic-settings>=2.8,<3",
+  "python-multipart>=0.0.20",
+  "sqlalchemy>=2.0,<3",
+  "sentence-transformers>=5,<6",
+  "streamlit[pdf]>=1.45,<2",
+  "tiktoken>=0.9,<1",
+  "torch>=2.4,<3",
+  "torchvision>=0.19,<1",
+  "uvicorn>=0.34,<1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<10",
+    "reportlab>=4,<5",
+    "ruff>=0.11",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["integration: requires local PostgreSQL and MinIO"]
