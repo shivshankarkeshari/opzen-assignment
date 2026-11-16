@@ -81,6 +81,62 @@ Upload the resulting `storage/demo/` files manually. Supported intake formats ar
 
 Follow the [five-minute demo](docs/demo.md): ingestion and evidence, cross-page conditions, named-authority investigation and follow-up, revision comparison, genuine/false conflicts, missing evidence, access restrictions and a daily revision.
 
+## Ask a question and read its evidence
+
+Start the API and worker, configure an LLM, and wait for uploaded documents to be ready. Submit a question with your configured identity key (the example uses the default local analyst key):
+
+```bash
+curl -sS -X POST http://localhost:8000/v1/answers \
+  -H 'X-API-Key: analyst-local-key' \
+  -H 'Idempotency-Key: question-001' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": "How long must closed onboarding files be retained, and what exceptions apply?",
+    "intent": "investigate",
+    "scope": "current"
+  }'
+```
+
+Use a new `Idempotency-Key` for each new question; reuse it only to retry the same request. `scope: current` uses approved, currently applicable revisions you can access. The asynchronous response returns HTTP 202 with a `run_id`:
+
+```json
+{"run_id":"<returned UUID>","status":"queued"}
+```
+
+Replace `<returned UUID>` below with that ID. Repeat the GET request to refresh progress and save the latest response locally:
+
+```bash
+RUN_ID='<returned UUID>'
+curl -sS "http://localhost:8000/v1/answers/$RUN_ID" \
+  -H 'X-API-Key: analyst-local-key' \
+  -o /tmp/opzen-answer.json
+
+cat /tmp/opzen-answer.json
+```
+
+There is **no single `final_answer` key**. Read `result.claims[].text` in order for the generated answer. `result` may be `null` while processing. Each claim's `citations[]` contains an exact `quote` and an `evidence_id`; look up that ID in `result.evidence` for the supporting text, document/revision, section, source locators and coverage.
+
+With optional `jq` installed, print the answer text:
+
+```bash
+jq -r '.result.claims[]?.text' /tmp/opzen-answer.json
+```
+
+To show each claim with its quotes and supporting evidence:
+
+```bash
+jq '.result as $r | $r.claims[]? | {
+  answer: .text,
+  citations: [.citations[]? | {
+    quote: .quote,
+    evidence_id: .evidence_id,
+    evidence: $r.evidence[.evidence_id]
+  }]
+}' /tmp/opzen-answer.json
+```
+
+Inspect `status`, `progress`, `result.gaps`, `result.stop_reason` and `result.freshness_state` as well. A completed run can still have missing evidence or a provider limitation. If the run fails or is cancelled, inspect its progress rather than polling indefinitely. `waiting_for_input` requires a clarification reply through `POST /v1/runs/{run_id}/resume`. See [API examples](docs/api-examples.md) and [Swagger](http://localhost:8000/docs) for search, follow-ups, comparison and clarification requests.
+
 ## Architecture and decisions
 
 ```mermaid

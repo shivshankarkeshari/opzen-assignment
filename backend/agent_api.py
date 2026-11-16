@@ -55,7 +55,20 @@ def run_for(session, run_id: str, actor: str):
 def register(app, identity):
     actor_dependency = Depends(identity)
 
-    @app.post("/v1/search")
+    @app.post(
+        "/v1/search",
+        summary="Search authorized document evidence",
+        description=(
+            "Run hybrid semantic and keyword retrieval without generating an answer. Send query and "
+            "scope: current for approved applicable revisions, effective_on with its date, or "
+            "selected_versions with explicit ready revision IDs. Optional document/type/department "
+            "filters narrow the scope. Returns ranked items, exact source spans, warnings and the "
+            "resolved date. RRF is rank fusion, not confidence; semantic scores are cosine distances. "
+            "Source access and embedding compatibility are checked. Invalid scope returns 422; "
+            "unavailable model/database services may return 503."
+        ),
+        tags=["Search"],
+    )
     def search_endpoint(request: SearchRequest, actor: str = actor_dependency):
         request_id = new_id()
         try:
@@ -97,12 +110,34 @@ def register(app, identity):
             )
         return {"request_id": request_id, **response}
 
-    @app.post("/v1/catalog/discover")
+    @app.post(
+        "/v1/catalog/discover",
+        summary="Discover document revisions eligible for a question",
+        description=(
+            "Return authorized revision metadata matching a SearchRequest scope and filters. A query "
+            "is required by the shared request schema, but this operation lists eligible metadata; it "
+            "does not encode the query, retrieve chunks or call an LLM. Use it to identify allowed "
+            "document/version IDs before requesting outlines or evidence. Returns items, which may be "
+            "empty when no ready applicable revision exists. Invalid scopes return 422."
+        ),
+        tags=["Search"],
+    )
     def discover(request: SearchRequest, actor: str = actor_dependency):
         with transaction() as session:
             return {"items": metadata(eligible(session, actor, request))}
 
-    @app.get("/v1/versions/{version_id}/outline")
+    @app.get(
+        "/v1/versions/{version_id}/outline",
+        summary="Read a revision’s section outline",
+        description=(
+            "Return the canonical section hierarchy and section IDs for one readable revision. Use "
+            "returned IDs with the section endpoint to retrieve complete subsection context instead "
+            "of guessing an identifier. This inspects retained extraction without running an LLM. "
+            "Source access is checked again after loading artifacts. Unavailable revisions return "
+            "404; extraction artifacts must already exist."
+        ),
+        tags=["Evidence"],
+    )
     def outline(version_id: UUID, actor: str = actor_dependency):
         with transaction() as session:
             version = row_dict(version_for(session, str(version_id), actor))
@@ -111,7 +146,18 @@ def register(app, identity):
             version_for(session, str(version_id), actor)
         return {"sections": result}
 
-    @app.get("/v1/versions/{version_id}/section")
+    @app.get(
+        "/v1/versions/{version_id}/section",
+        summary="Read a complete canonical subsection",
+        description=(
+            "Fetch section_id from the exact readable version, using an ID returned by its outline. "
+            "Returns the section’s ordered canonical content and coverage information, including "
+            "available continuation material and provenance. Inspect coverage before assuming a "
+            "section is complete; batch boundaries or context limits can produce partial coverage. No "
+            "answer is generated. Unknown sections or unavailable revisions return 404."
+        ),
+        tags=["Evidence"],
+    )
     def section(version_id: UUID, section_id: str, actor: str = actor_dependency):
         with transaction() as session:
             version = row_dict(version_for(session, str(version_id), actor))
@@ -123,7 +169,18 @@ def register(app, identity):
             version_for(session, str(version_id), actor)
         return result
 
-    @app.get("/v1/chunks/{chunk_id}/evidence")
+    @app.get(
+        "/v1/chunks/{chunk_id}/evidence",
+        summary="Expand a chunk into its source subsections",
+        description=(
+            "Resolve an authorized chunk to its stored source spans and containing canonical "
+            "sections. Use this when a retrieved chunk is only part of a rule or when opening "
+            "citation context. Returns chunk metadata, sources and expanded sections; internal "
+            "full-text vectors are omitted. It does not perform a new similarity search or LLM call. "
+            "Missing chunks or inaccessible revisions return 404."
+        ),
+        tags=["Evidence"],
+    )
     def evidence(chunk_id: UUID, actor: str = actor_dependency):
         with transaction() as session:
             chunk = session.get(Chunk, str(chunk_id))
@@ -154,7 +211,22 @@ def register(app, identity):
             "sections": [sections.fetch(section_map, sid) for sid in sorted(ids)],
         }
 
-    @app.post("/v1/answers", status_code=202)
+    @app.post(
+        "/v1/answers",
+        status_code=202,
+        summary="Start a cited answer or investigation",
+        description=(
+            "Queue an owned evidence-agent run. Send query, source scope and intent: answer, compare, "
+            "conflicts or investigate, plus required Idempotency-Key. compare requires exactly two "
+            "explicitly selected ready revisions. For a follow-up, provide parent_run_id with the "
+            "same scope and a completed parent result. Returns 202 with run_id and status; poll GET "
+            "/v1/answers/{run_id}. The run pins source revisions/model settings, enforces up to five "
+            "exploration iterations and may return gaps or request clarification. Reused keys with "
+            "changed input or an unfinished parent return 409; invalid/no eligible scope returns 422; "
+            "an unconfigured LLM returns 503."
+        ),
+        tags=["Answers"],
+    )
     def submit_answer(
         request: AnswerRequest,
         actor: str = actor_dependency,
@@ -257,7 +329,17 @@ def register(app, identity):
             )
         return {"run_id": run_id, "status": "queued"}
 
-    @app.get("/v1/answers")
+    @app.get(
+        "/v1/answers",
+        summary="List your saved questions and investigations",
+        description=(
+            "Return recent owned agent questions with run ID, question, intent, status and creation "
+            "time, newest first. limit defaults to 30 and must be 1–100. Runs with unavailable source "
+            "access are omitted. This is a history list; retrieve one answer by run ID for claims, "
+            "evidence, gaps and progress."
+        ),
+        tags=["Answers"],
+    )
     def answers(limit: int = Query(30, ge=1, le=100), actor: str = actor_dependency):
         with transaction() as session:
             runs = session.scalars(
@@ -283,7 +365,20 @@ def register(app, identity):
                 )
             return items
 
-    @app.get("/v1/answers/{run_id}")
+    @app.get(
+        "/v1/answers/{run_id}",
+        summary="Get a question’s progress, answer and sources",
+        description=(
+            "Poll an owned accessible question run. Returns status, progress, question and intent; "
+            "result is null until a result exists. Checked generated text is in result.claims[].text, "
+            "exact quotes in claims[].citations, and source content in result.evidence. Review gaps, "
+            "stop_reason, iterations and freshness_state before relying on the answer. Changed "
+            "applicable revisions mark results stale; inaccessible source snapshots withhold the "
+            "result. A completed run can still be evidence-limited or provider-blocked, so inspect "
+            "its result, not status alone. Unavailable runs return 404."
+        ),
+        tags=["Answers"],
+    )
     def answer(run_id: UUID, actor: str = actor_dependency):
         with transaction() as session:
             run = run_for(session, str(run_id), actor)
@@ -318,7 +413,18 @@ def register(app, identity):
                 }
             return payload
 
-    @app.post("/v1/runs/{run_id}/resume")
+    @app.post(
+        "/v1/runs/{run_id}/resume",
+        summary="Answer a pending clarification and resume the investigation",
+        description=(
+            "Resume an owned agent run that is waiting_for_input. Send the current interrupt_id and a "
+            "nonempty reply. Returns queued status and continues the same durable thread; accumulated "
+            "exploration/call limits are not reset. A stale interrupt, duplicate resume or "
+            "non-pending clarification returns 409. Missing or inaccessible runs return 404. This "
+            "operation does not create a new follow-up question."
+        ),
+        tags=["Run controls"],
+    )
     def resume(run_id: UUID, reply: ResumeRequest, actor: str = actor_dependency):
         with transaction() as session:
             job = session.scalar(
@@ -346,7 +452,19 @@ def register(app, identity):
             )
         return {"run_id": str(run_id), "status": "queued"}
 
-    @app.post("/v1/answers/{run_id}/review")
+    @app.post(
+        "/v1/answers/{run_id}/review",
+        summary="Record a human review of a conflict report",
+        description=(
+            "Review an owned accessible conflicts result. Send decision (confirmed, dismissed or "
+            "unresolved), rationale and expected_updated_at copied from the latest result. Review "
+            "applies to the report, not individual clauses, and records an audit event; it does not "
+            "amend policies or establish legal precedence. Confirm/dismiss requires a checked "
+            "conflict candidate. No conflict result returns 404; a changed review version or missing "
+            "confirmable candidate returns 409. Refresh the result before retrying a stale review."
+        ),
+        tags=["Reviews"],
+    )
     def review(run_id: UUID, decision: ReviewRequest, actor: str = actor_dependency):
         with transaction() as session:
             run = run_for(session, str(run_id), actor)

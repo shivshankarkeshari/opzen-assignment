@@ -196,12 +196,35 @@ app = FastAPI(title="Local Codex structured gateway")
 gate = threading.BoundedSemaphore(1)
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    summary="Check the local Codex gateway",
+    description=(
+        "Return gateway status, configured model and transport. No bearer key is required. This "
+        "is a lightweight process/configuration check; it does not call Codex or verify login, "
+        "quota or model availability."
+    ),
+    tags=["Health"],
+)
 def health():
     return {"status": "ok", "model": config().model, "transport": "codex-cli"}
 
 
-@app.post("/v1/chat/completions")
+@app.post(
+    "/v1/chat/completions",
+    summary="Request one structured JSON inference",
+    description=(
+        "Host-only development adapter for the configured Codex CLI model. Supply Authorization: "
+        "Bearer <gateway key>, messages, matching model ID, non-streaming mode and a JSON-object "
+        "response_format.json_schema.schema. Supports low/medium/high reasoning effort and "
+        "max_tokens 1–8192. Returns an OpenAI-style completion with JSON content and reported "
+        "usage. Token limits are advisory with a post-completion check; a subprocess deadline "
+        "provides the hard time bound. No request queue: a busy gateway returns 429. Invalid "
+        "credentials return 401, invalid parameters 400, oversized context 413, CLI/output "
+        "failures 502 and deadline expiry 504. Not a general OpenAI API server."
+    ),
+    tags=["Structured inference"],
+)
 def completions(body: dict, authorization: str = Header(default="")):
     s = config()
     key = s.gateway_api_key.get_secret_value()

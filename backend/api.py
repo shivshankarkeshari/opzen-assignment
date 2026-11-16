@@ -32,10 +32,60 @@ from backend.intake import Metadata, document_for, submit, version_for
 from backend.retrieval import SearchRequest, eligible
 
 logger = logging.getLogger(__name__)
-app = FastAPI(title="Opzen Document Workspace", version="0.1.0")
+app = FastAPI(
+    title="Opzen Document Workspace",
+    version="0.1.0",
+    description=(
+        "Upload and version documents, inspect extracted evidence, search authorized sources, "
+        "and run bounded investigations with checked citations. "
+        "Except for `/health`, operations require the `X-API-Key` header. Default local demo "
+        "keys are `analyst-local-key` and `reviewer-local-key`; use your configured values if "
+        "changed. These identities are a prototype, not production SSO. "
+        "Upload metadata is a JSON string in multipart form data. Uploads and answer creation "
+        "require `Idempotency-Key`: reuse it only for the same request. Processing and answering "
+        "are asynchronous; a 202 response means accepted, not complete. Poll the returned run ID. "
+        "Source permissions are rechecked and unavailable resources are generally reported as "
+        "404 to avoid disclosing protected documents. A 422 response indicates invalid input "
+        "or scope. Inspect answer gaps, source coverage and freshness; a completed run does "
+        "not guarantee a complete or correct answer."
+    ),
+    openapi_tags=[
+        {"name": "Health", "description": "Dependency health and configured model information."},
+        {"name": "Documents", "description": "Uploads, metadata and immutable revision history."},
+        {
+            "name": "Processing",
+            "description": "Reprocessing and extraction/quality artifact metadata.",
+        },
+        {
+            "name": "Search",
+            "description": "Authorized metadata discovery and hybrid evidence retrieval.",
+        },
+        {
+            "name": "Evidence",
+            "description": "Chunks, source locators, files and canonical subsections.",
+        },
+        {
+            "name": "Answers",
+            "description": "Durable cited questions, comparisons and investigations.",
+        },
+        {
+            "name": "Run controls",
+            "description": "Progress, cancellation, retry and clarification resume.",
+        },
+        {
+            "name": "Permissions",
+            "description": "Owner-managed read grants for local demo identities.",
+        },
+        {"name": "Reviews", "description": "Audited human decisions on conflict reports."},
+    ],
+)
 
 
-def identity(x_api_key: Annotated[str, Header()] = "") -> str:
+def identity(
+    x_api_key: Annotated[
+        str, Header(description="Configured local demo API key for the calling identity.")
+    ] = "",
+) -> str:
     for name, key in settings().identities.items():
         if secrets.compare_digest(x_api_key, key):
             return f"demo:{name}"
@@ -54,7 +104,17 @@ def database_error(request, exc):
     )
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    summary="Check service health and configured models",
+    description=(
+        "Check database and object-storage availability and see the configured LLM, embedding "
+        "model and exploration limit. No API key is required. A 200 response contains individual "
+        "health flags; inspect those flags rather than assuming all dependencies are healthy. "
+        "This does not run a model inference or test provider quota."
+    ),
+    tags=["Health"],
+)
 def health():
     checks = {}
     try:
@@ -81,8 +141,35 @@ def health():
     }
 
 
-@app.post("/v1/documents", status_code=202)
-@app.post("/v1/documents/{document_id}/versions", status_code=202)
+@app.post(
+    "/v1/documents",
+    status_code=202,
+    summary="Upload a document for processing",
+    description=(
+        "Create a new document from a PDF, DOCX or PNG/JPEG image using multipart form data. Send "
+        "the file, optional metadata as a JSON string, and a required Idempotency-Key header. "
+        "Metadata can describe title, type, department, approval, effective dates and sharing. "
+        "Returns 202 with document, version and run identifiers; processing continues "
+        "asynchronously. Reuse the same key for an identical retry. Invalid metadata/input "
+        "returns 422, changed input under a reused key returns 409, and storage failures may "
+        "return 503."
+    ),
+    tags=["Documents"],
+)
+@app.post(
+    "/v1/documents/{document_id}/versions",
+    status_code=202,
+    summary="Upload a new revision of an existing document",
+    description=(
+        "Add changed content to an existing document while retaining its identity and earlier "
+        "revisions. Requires manage access, multipart file/metadata, and Idempotency-Key. Returns "
+        "202 with the new revision and processing run; it does not wait for extraction or "
+        "indexing. Use this for a content change, not a processing-configuration change. An "
+        "unavailable document returns 404. Invalid input returns 422; conflicting reuse of an "
+        "idempotency key returns 409."
+    ),
+    tags=["Documents"],
+)
 def upload(
     actor: Actor,
     file: Annotated[UploadFile, File()],
@@ -117,7 +204,18 @@ def upload(
         ) from None
 
 
-@app.get("/v1/documents")
+@app.get(
+    "/v1/documents",
+    summary="List documents you can read",
+    description=(
+        "Browse active documents accessible to the current identity. Filter by display filename "
+        "with search and paginate with limit/offset; limit is clamped to 1–100. Each item "
+        "includes the latest uploaded revision, the currently applicable revision ID where "
+        "available, and revision count. Latest uploaded does not necessarily mean approved, ready "
+        "or currently effective. Documents without read permission are omitted."
+    ),
+    tags=["Documents"],
+)
 def documents(actor: Actor, search: str = "", limit: int = 50, offset: int = 0):
     with transaction() as session:
         query = (
@@ -165,7 +263,20 @@ def documents(actor: Actor, search: str = "", limit: int = 50, offset: int = 0):
         return output
 
 
-@app.post("/v1/versions/{version_id}/reprocess", status_code=202)
+@app.post(
+    "/v1/versions/{version_id}/reprocess",
+    status_code=202,
+    summary="Reprocess an existing revision with current settings",
+    description=(
+        "Create a new processing revision from retained original content using the current "
+        "extraction, chunking and embedding configuration. Requires read access to the source, "
+        "manage access to its document and Idempotency-Key. Compatible successful extraction may "
+        "be reused. Returns 202 with a processing run; the original revision and its evidence are "
+        "preserved. Use upload-new-revision for changed source content. Unavailable sources "
+        "return 404."
+    ),
+    tags=["Processing"],
+)
 def reprocess(
     version_id: UUID,
     actor: Actor,
@@ -196,13 +307,33 @@ def reprocess(
     )
 
 
-@app.get("/v1/documents/{document_id}")
+@app.get(
+    "/v1/documents/{document_id}",
+    summary="Get document metadata",
+    description=(
+        "Return metadata for one active document that the current identity can read. This "
+        "endpoint describes the logical document; use its versions endpoint for revision history, "
+        "processing status and applicability metadata. Missing or inaccessible documents return "
+        "404 rather than revealing protected content."
+    ),
+    tags=["Documents"],
+)
 def document(document_id: UUID, actor: Actor):
     with transaction() as session:
         return row_dict(document_for(session, str(document_id), actor))
 
 
-@app.get("/v1/documents/{document_id}/versions")
+@app.get(
+    "/v1/documents/{document_id}/versions",
+    summary="List a document’s revision history",
+    description=(
+        "Return readable document revisions in descending revision-number order, including "
+        "processing and content revisions. Use these IDs to inspect artifacts or explicitly "
+        "select revisions for historical comparison. Listing a revision does not mean it is "
+        "currently effective or ready for search. A missing or inaccessible document returns 404."
+    ),
+    tags=["Documents"],
+)
 def versions(document_id: UUID, actor: Actor):
     with transaction() as session:
         document_for(session, str(document_id), actor)
@@ -216,7 +347,18 @@ def versions(document_id: UUID, actor: Actor):
         ]
 
 
-@app.get("/v1/versions/{version_id}/chunks")
+@app.get(
+    "/v1/versions/{version_id}/chunks",
+    summary="Inspect extracted chunks and their source spans",
+    description=(
+        "Return total chunk count and a page of items for an exact readable revision, ordered by "
+        "chunk ordinal. Each item includes text, heading context and source spans; internal "
+        "full-text search vectors are excluded. limit is clamped to 1–100 and offset to zero or "
+        "greater. An empty list can mean extraction has not produced chunks yet, not that an LLM "
+        "found no answer. Missing or inaccessible revisions return 404."
+    ),
+    tags=["Evidence"],
+)
 def chunks(version_id: UUID, actor: Actor, limit: int = 30, offset: int = 0):
     with transaction() as session:
         version_for(session, str(version_id), actor)
@@ -244,14 +386,36 @@ def chunks(version_id: UUID, actor: Actor, limit: int = 30, offset: int = 0):
         }
 
 
-@app.get("/v1/versions/{version_id}/artifacts")
+@app.get(
+    "/v1/versions/{version_id}/artifacts",
+    summary="Inspect processing artifacts and quality status",
+    description=(
+        "Return the exact revision’s processing status, artifact manifest and quality report. The "
+        "manifest describes retained canonical extraction, Markdown, tables, pictures and batches "
+        "where available; it is metadata, not the file bytes. Use the content endpoint to "
+        "retrieve an artifact. Read permission is required; missing or inaccessible revisions "
+        "return 404."
+    ),
+    tags=["Processing"],
+)
 def artifacts(version_id: UUID, actor: Actor):
     with transaction() as session:
         v = version_for(session, str(version_id), actor)
         return {"status": v.status, "manifest": v.artifact_manifest, "quality": v.quality_report}
 
 
-@app.get("/v1/versions/{version_id}/content")
+@app.get(
+    "/v1/versions/{version_id}/content",
+    summary="Download an original file or extracted artifact",
+    description=(
+        "Read authorized bytes from an exact revision. kind can be original (default), markdown, "
+        "tables, pictures or batches; index selects an entry for list-valued kinds. Content-Type "
+        "reflects the artifact and Cache-Control is no-store. Access is checked before and after "
+        "storage reads. Unknown kinds return 422; unavailable artifacts or out-of-range indexes "
+        "return 404. This endpoint does not generate missing artifacts."
+    ),
+    tags=["Evidence"],
+)
 def content(version_id: UUID, actor: Actor, kind: str = "original", index: int = 0):
     with transaction() as session:
         v = version_for(session, str(version_id), actor)
@@ -275,7 +439,17 @@ def content(version_id: UUID, actor: Actor, kind: str = "original", index: int =
     return Response(data, media_type=media, headers={"Cache-Control": "no-store"})
 
 
-@app.get("/v1/source-spans/{source_id}")
+@app.get(
+    "/v1/source-spans/{source_id}",
+    summary="Get the source locator behind a citation",
+    description=(
+        "Resolve a source-span ID to its stored locator and owning revision. Locators may include "
+        "page information and Docling item provenance; they are not guaranteed exact character or "
+        "cell highlights. The current identity must still be able to read the source revision. "
+        "Missing or inaccessible sources return 404."
+    ),
+    tags=["Evidence"],
+)
 def source_span(source_id: UUID, actor: Actor):
     with transaction() as session:
         source = session.get(SourceSpan, str(source_id))
@@ -286,7 +460,17 @@ def source_span(source_id: UUID, actor: Actor):
         return {**row_dict(source), "version_id": chunk.version_id}
 
 
-@app.get("/v1/runs")
+@app.get(
+    "/v1/runs",
+    summary="List your document-processing runs",
+    description=(
+        "Return up to 100 owned runs joined to documents you can still read, newest first. Use "
+        "this for ingestion and reprocessing activity. This document-linked list is not the saved "
+        "agent-question history; use GET /v1/answers for questions. Runs whose document access is "
+        "unavailable are omitted."
+    ),
+    tags=["Run controls"],
+)
 def runs(actor: Actor):
     with transaction() as session:
         return [
@@ -318,13 +502,34 @@ def owned_run(session, run_id: str, actor: str):
     return run
 
 
-@app.get("/v1/runs/{run_id}")
+@app.get(
+    "/v1/runs/{run_id}",
+    summary="Get a run’s status and progress",
+    description=(
+        "Inspect an owned ingestion, reprocessing or agent run, including its current status, "
+        "progress and stored run metadata. For a generated answer with checked claims and "
+        "evidence, use GET /v1/answers/{run_id}. Current source permissions are rechecked. "
+        "Missing, unowned or inaccessible runs return 404."
+    ),
+    tags=["Run controls"],
+)
 def run_status(run_id: UUID, actor: Actor):
     with transaction() as session:
         return row_dict(owned_run(session, str(run_id), actor))
 
 
-@app.post("/v1/runs/{run_id}/cancel")
+@app.post(
+    "/v1/runs/{run_id}/cancel",
+    summary="Request cancellation of your run",
+    description=(
+        "Record a cancellation request for an owned accessible run. Cancellation is cooperative: "
+        "the worker may finish its current bounded conversion or model call before stopping. The "
+        "response reports current status and whether cancellation was requested; it does not "
+        "guarantee the run has already stopped. Terminal completed, failed, cancelled or partial "
+        "runs are not changed. Unavailable runs return 404."
+    ),
+    tags=["Run controls"],
+)
 def cancel(run_id: UUID, actor: Actor):
     with transaction() as session:
         run = owned_run(session, str(run_id), actor)
@@ -333,7 +538,18 @@ def cancel(run_id: UUID, actor: Actor):
         return {"status": run.status, "cancel_requested": bool(run.cancel_requested_at)}
 
 
-@app.post("/v1/runs/{run_id}/retry")
+@app.post(
+    "/v1/runs/{run_id}/retry",
+    summary="Retry a failed or cancelled run",
+    description=(
+        "Requeue an owned accessible run whose job is failed or cancelled. Ingestion/reprocessing "
+        "retries also require manage permission for the document. The durable workflow resumes "
+        "using its stored work and checkpoints; this is not an unlimited fresh investigation "
+        "budget. Returns the same run ID with queued status. Other job states return 409; "
+        "unavailable runs return 404. Use resume for a pending clarification."
+    ),
+    tags=["Run controls"],
+)
 def retry(run_id: UUID, actor: Actor):
     with transaction() as session:
         run = owned_run(session, str(run_id), actor)
@@ -353,7 +569,18 @@ class Grant(BaseModel):
     allow: bool
 
 
-@app.put("/v1/documents/{document_id}/permissions")
+@app.put(
+    "/v1/documents/{document_id}/permissions",
+    summary="Grant or revoke a demo user’s document access",
+    description=(
+        "Require manage access to the document. Send a configured demo user name and allow=true "
+        "to grant read access or allow=false to revoke it. The owner’s access cannot be changed "
+        "in this prototype. Updates the ACL revision, records an audit event and marks dependent "
+        "saved results for access rechecking. Returns acl_revision. Unknown identities or "
+        "owner-access changes return 422; unavailable documents return 404."
+    ),
+    tags=["Permissions"],
+)
 def permission(document_id: UUID, grant: Grant, actor: Actor):
     if grant.user not in settings().identities:
         raise HTTPException(422, "Unknown demo identity")
