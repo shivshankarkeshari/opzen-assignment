@@ -1105,7 +1105,7 @@ This Markdown file supplies the design and workflow specification. It does not c
 
 ### User-provided material
 
-- [Interview assignment](../../interview_assignment.docx), reviewed from its document XML. It defines the problem, deliverables, scope allowance, and assessment criteria.
+- Interview assignment (original brief supplied separately), reviewed from its document XML. It defines the problem, deliverables, scope allowance, and assessment criteria.
 - User stack selection in this conversation: Streamlit, LangGraph, Docling, MinIO, and Langfuse.
 - The user requested analysis and documentation only, and later instructed that the shared conversation be left aside.
 

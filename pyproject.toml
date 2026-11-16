@@ -28,6 +28,8 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "deepeval==4.3.4",
+    "python-dotenv>=1,<2",
     "pytest>=8,<10",
     "reportlab>=4,<5",
     "ruff>=0.11",

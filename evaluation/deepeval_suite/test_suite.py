@@ -1,6 +1,10 @@
 """Regression checks for misleading evaluation passes; no model/server needed."""
 
 import json
+import os
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -18,6 +22,49 @@ class EvaluationSafetyTests(unittest.TestCase):
     def setUp(self):
         path = Path(__file__).resolve().parents[1] / "financial-v1/golden.jsonl"
         self.golden = json.loads(path.read_text().splitlines()[0])
+
+    def test_only_root_env_is_loaded_from_a_nested_working_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            package = root / "evaluation" / "deepeval_suite"
+            package.mkdir(parents=True)
+            initializer = Path(__file__).with_name("__init__.py").read_text()
+            (package / "__init__.py").write_text(initializer)
+            (root / ".env").write_text("OPZEN_ROOT_CONFIG=loaded\nOPZEN_PROCESS_CONFIG=file\n")
+            for name in (".env", ".env.local"):
+                (package / name).write_text("OPZEN_AUTO_CONFIG=unexpected\n")
+            env = dict(os.environ)
+            for key in (
+                "OPZEN_ROOT_CONFIG",
+                "OPZEN_AUTO_CONFIG",
+                "DEEPEVAL_DISABLE_DOTENV",
+                "DEEPEVAL_DISABLE_LEGACY_KEYFILE",
+            ):
+                env.pop(key, None)
+            env.update(
+                PYTHONPATH=str(root),
+                CONFIDENT_API_KEY="test-inherited-cloud-key",
+                OPZEN_PROCESS_CONFIG="kept",
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import os; import evaluation.deepeval_suite; "
+                    "from deepeval.config.settings import get_settings; get_settings(); "
+                    "assert os.environ['OPZEN_ROOT_CONFIG'] == 'loaded'; "
+                    "assert 'OPZEN_AUTO_CONFIG' not in os.environ; "
+                    "assert os.environ['OPZEN_PROCESS_CONFIG'] == 'kept'; "
+                    "assert os.environ['DEEPEVAL_DISABLE_LEGACY_KEYFILE'] == '1'; "
+                    "from deepeval.confident.api import is_confident; assert not is_confident()",
+                ],
+                cwd=package,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(result.returncode, 0, "Root-only environment loading failed")
 
     def test_provider_failure_is_not_a_correct_abstention(self):
         case = make_case(

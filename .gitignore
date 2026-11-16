@@ -20,10 +20,9 @@ output/pdf/financial-ui-tests/receipts.json
 evaluation/financial-v1/langfuse-dataset.json
 evaluation/deepeval_suite/results/*
 !evaluation/deepeval_suite/results/codex-gpt-6.1-sol-30/
+!evaluation/deepeval_suite/results/20261115T134006Z/
 evaluation/financial-v1/results-*.jsonl
-!evaluation/financial-v1/results-20261115-204724.jsonl
-!evaluation/financial-v1/results-20261115-210647.jsonl
-!evaluation/financial-v1/results-20261116-004630.jsonl
 !evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl
+!evaluation/financial-v1/results-20261115-183958.jsonl
 output/pdf/financial-ui-tests/ui-results*.json
 !output/pdf/financial-ui-tests/ui-results-codex-all-30.json

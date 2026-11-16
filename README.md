@@ -4,6 +4,8 @@ A working local prototype for the Document Intelligence assignment, using Stream
 
 This submission uses a representative synthetic corpus. It does not claim tested capacity for one million documents. Mocked components, incomplete features and evaluation failures are stated below.
 
+See the [current models, Langfuse usefulness, capabilities and evaluation status](docs/current-system-and-evaluation-status.md) for the latest local test snapshot.
+
 ## Setup
 
 Requires Docker Desktop, Python 3.12 and [uv](https://docs.astral.sh/uv/). From the repository root:
@@ -145,7 +147,9 @@ Validate frozen source references without LLM calls:
 uv run python -m scripts.evaluate_golden
 ```
 
-The isolated [DeepEval suite](evaluation/deepeval_suite/README.md) evaluates saved application predictions using all five requested RAG metrics plus reference correctness and application integrity. Follow [manual evaluation commands](evaluation/deepeval_suite/RUNNING.md). Running evaluations is opt-in; it is not part of application startup.
+The [DeepEval suite](evaluation/deepeval_suite/README.md) evaluates saved application predictions using all five requested RAG metrics plus reference correctness and application integrity. Follow [manual evaluation commands](evaluation/deepeval_suite/RUNNING.md). Application and evaluation share the root `.venv`, `pyproject.toml`, `uv.lock` and `.env`; no separate evaluation environment or Confident AI key is needed. Running evaluations is opt-in; it is not part of application startup.
+
+The restored [LFM versus GPT-SOL findings](docs/lfm-vs-gpt-sol-findings.md) explain historical score differences and comparison limits. The [evaluation automation plan](docs/evaluation-automation-plan.md) maps implemented and missing generation/context/ranking metrics, operational monitoring and regression gates; it is a plan, not an implemented CI pipeline.
 
 Preserved Codex application outputs passed 28/30 lexical/integrity diagnostics; one answer omitted a required fact/citation and one date-format diagnostic was a false failure. The completed first DeepEval pass had 29/30 application-integrity passes but 69 judge-metric errors across 20 cases. Its metric means use only successfully scored cases, with errors and not-applicable counts retained. Interrupted retries are archived and are not presented as a completed combined benchmark. These are familiar synthetic regression cases, not a production accuracy estimate. Same-model generation/judging creates correlated errors.
 
@@ -163,6 +167,6 @@ The prototype has no ANN index, cross-encoder reranker or universal legacy conve
 
 ## Repository layout
 
-`backend/` contains API, ingestion, storage, retrieval and agent code; `ui/` contains Streamlit; `scripts/` contains setup, demo and optional developer tools; `tests/` contains application checks; `evaluation/` contains frozen labels, saved sample outputs and the isolated evaluator; `docs/` contains reviewer documentation and design detail.
+`backend/` contains API, ingestion, storage, retrieval and agent code; `ui/` contains Streamlit; `scripts/` contains setup, demo and optional developer tools; `tests/` contains application checks; `evaluation/` contains frozen labels, saved sample outputs and the evaluator; `docs/` contains reviewer documentation and design detail.
 
 Local credentials, virtual environments, application storage, generated receipts and `.submission-archive/` are excluded from the submission package. See [cleanup record](docs/cleanup-record.md). Earlier experiment history was preserved locally rather than discarded. No application or evaluation scoring logic was changed for submission cleanup.

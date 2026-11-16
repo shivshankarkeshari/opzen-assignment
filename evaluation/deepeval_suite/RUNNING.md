@@ -2,16 +2,16 @@
 
 The evaluation jobs and temporary gateways were stopped on request. Original results remain intact. A local Codex application gateway was left running at cleanup time; check its health before use. For LM Studio judges, start its server and use the configured port 1234 instead.
 
-## 1. Install the isolated environment
+## 1. Install the shared root environment
 
 Run from the repository root:
 
 ```bash
-cd /Users/shivshankarkeshari/Documents/opzen_
-uv sync --project evaluation/deepeval_suite --frozen
+cd /path/to/opzen_
+uv sync --frozen
 ```
 
-The suite loads the existing root `.env`. The preserved predictions were generated with `gpt-6.1-sol`; choose the judge using `DEEPEVAL_JUDGE_MODEL`, `DEEPEVAL_JUDGE_BASE_URL` and related settings. The gateway steps below apply when choosing the optional Codex judge. Credentials stay in `.env`; do not put them into commands.
+The suite loads only the repository-root `.env`. Nested `.env` files, `.env.local` files and DeepEval legacy keyfiles are not loaded; explicit shell variables still override root values. Both the application and evaluation use the root `.venv`, `pyproject.toml` and `uv.lock`. There is no nested environment. The preserved predictions were generated with `gpt-6.1-sol`; choose the judge using `DEEPEVAL_JUDGE_MODEL`, `DEEPEVAL_JUDGE_BASE_URL` and related settings. The gateway steps below apply when choosing the optional Codex judge. Credentials stay in `.env`; do not put them into commands.
 
 ## 2. Check the judge gateway
 
@@ -22,7 +22,7 @@ curl -fsS http://127.0.0.1:1235/health
 If it is unavailable, start it in a separate terminal and leave that terminal open:
 
 ```bash
-cd /Users/shivshankarkeshari/Documents/opzen_
+cd /path/to/opzen_
 uv run python -m uvicorn scripts.codex_gateway:app \
   --host 127.0.0.1 --port 1235 --no-access-log
 ```
@@ -31,21 +31,10 @@ This uses the host CLI's existing login. Saved-prediction evaluation does not re
 
 ## 3. Run all 30 saved answers
 
-If you have logged in to Confident AI, the local-only runner intentionally stops. Use the following command to suppress cloud credentials only for this invocation, while preserving your saved login. It also avoids the warning about an active root virtual environment:
+No Confident AI API key, login, `--project` flag or virtual-environment override is needed. The suite runs locally and ignores cloud credentials in its process without changing saved credentials.
 
 ```bash
-env -u VIRTUAL_ENV CONFIDENT_API_KEY= DEEPEVAL_DISABLE_LEGACY_KEYFILE=1 \
-env -u VIRTUAL_ENV CONFIDENT_API_KEY= DEEPEVAL_DISABLE_LEGACY_KEYFILE=1 uv run --project evaluation/deepeval_suite python -m evaluation.deepeval_suite.run \
-  --predictions evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl \
-  --max-cases 30
-```
-
-This remains local and does not enable the Confident AI dashboard. The installed SDK was checked with these overrides and reported `confident_login_detected: false`. No login was deleted and no evaluation was started for that check.
-
-Without Confident AI credentials, the ordinary command is:
-
-```bash
-env -u VIRTUAL_ENV CONFIDENT_API_KEY= DEEPEVAL_DISABLE_LEGACY_KEYFILE=1 uv run --project evaluation/deepeval_suite python -m evaluation.deepeval_suite.run \
+uv run python -m evaluation.deepeval_suite.run \
   --predictions evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl \
   --max-cases 30
 ```
@@ -57,7 +46,7 @@ For a one-case check, replace `--max-cases 30` with `--ids FIN-001 --max-cases 1
 For deterministic checks without any judge calls:
 
 ```bash
-env -u VIRTUAL_ENV CONFIDENT_API_KEY= DEEPEVAL_DISABLE_LEGACY_KEYFILE=1 uv run --project evaluation/deepeval_suite python -m evaluation.deepeval_suite.run \
+uv run python -m evaluation.deepeval_suite.run \
   --predictions evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl \
   --max-cases 30 --integrity-only
 ```
@@ -95,13 +84,13 @@ After both are ready, run the following from the repository root in a third term
 
 ```bash
 DEEPEVAL_JUDGE_BASE_URL=http://127.0.0.1:1236/v1 \
-env -u VIRTUAL_ENV CONFIDENT_API_KEY= DEEPEVAL_DISABLE_LEGACY_KEYFILE=1 uv run --project evaluation/deepeval_suite python -m evaluation.deepeval_suite.run \
+uv run python -m evaluation.deepeval_suite.run \
   --predictions evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl \
   --ids FIN-001,FIN-003,FIN-005,FIN-007,FIN-009,FIN-011,FIN-013,FIN-015,FIN-017,FIN-019,FIN-021,FIN-023,FIN-025,FIN-027,FIN-029 \
   --output /tmp/opzen-eval-odd-01 &
 
 DEEPEVAL_JUDGE_BASE_URL=http://127.0.0.1:1237/v1 \
-env -u VIRTUAL_ENV CONFIDENT_API_KEY= DEEPEVAL_DISABLE_LEGACY_KEYFILE=1 uv run --project evaluation/deepeval_suite python -m evaluation.deepeval_suite.run \
+uv run python -m evaluation.deepeval_suite.run \
   --predictions evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl \
   --ids FIN-002,FIN-004,FIN-006,FIN-008,FIN-010,FIN-012,FIN-014,FIN-016,FIN-018,FIN-020,FIN-022,FIN-024,FIN-026,FIN-028,FIN-030 \
   --output /tmp/opzen-eval-even-01 &

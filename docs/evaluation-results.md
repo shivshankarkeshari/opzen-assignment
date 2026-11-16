@@ -31,9 +31,15 @@ Contextual Precision evaluates the actual synthesis-ledger order, which is evide
 ## Reproducible artifacts
 
 - [Golden dataset](../evaluation/financial-v1/golden.jsonl), [source manifest](../evaluation/financial-v1/manifest.json), [validation](../evaluation/financial-v1/validation.json).
-- [Saved 30 application predictions](../evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl) and [attempt provenance](../evaluation/financial-v1/codex-all-30-manifest.json). The three source application batches referenced by this manifest are retained.
+- [Saved 30 application predictions](../evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl) and [attempt provenance](../evaluation/financial-v1/codex-all-30-manifest.json). Supporting partial development batches were removed from the submission and archived locally. Historical source-file strings in the consolidated rows are audit labels; the consolidated file remains byte-for-byte unchanged.
 - [Completed DeepEval summary](../evaluation/deepeval_suite/results/codex-gpt-6.1-sol-30/summary.json) and [per-case metrics/reasons](../evaluation/deepeval_suite/results/codex-gpt-6.1-sol-30/results.jsonl).
 - [UI replay](../output/pdf/financial-ui-tests/ui-results-codex-all-30.json).
 - [Manual evaluation instructions](../evaluation/deepeval_suite/RUNNING.md).
 
 The source/model failures and low scores are intentionally preserved. No model-based evaluation was run or altered during submission cleanup.
+
+## Restored LFM comparison and planned automation
+
+The historical 30-case LFM evaluation is restored in [20261115T134006Z](../evaluation/deepeval_suite/results/20261115T134006Z/summary.json), with original case records and matching application predictions. It measured only application integrity, reference correctness and faithfulness. See [the model comparison](lfm-vs-gpt-sol-findings.md) for why its low scores cannot be attributed simply to chunk size or embedding dimension.
+
+See [the automation plan](evaluation-automation-plan.md) for current metric coverage, MRR/nDCG label requirements, latency/token/cost and retrieval-health instrumentation, CI/scheduled workflows and regression criteria. No new model evaluation or scoring-policy change was made for this plan.
