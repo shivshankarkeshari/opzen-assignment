@@ -168,7 +168,68 @@ See [detailed architecture](docs/design/architecture.md), [database design](docs
 
 ## Daily changes and feedback
 
-Use **Add revision** on the existing document for a content change, preserving its identity and prior revisions. Processing publishes a new immutable revision; current/date/selected-revision scopes determine applicable evidence. **Reprocess with current settings** creates a processing revision after model/chunking changes. Publication conservatively invalidates saved results; result reads recheck scope and permissions. Permission revocation can withhold an entire dependent saved answer. Targeted incremental invalidation and production change-data-capture connectors remain roadmap items.
+### Upload an edited document in the UI
+
+1. Open the [Streamlit workspace](http://localhost:8501) and select the identity that originally uploaded the document.
+2. Go to **Documents**, find the existing document and click **Open**.
+3. Click **Add revision** beside the document name. This button is visible only to the document owner.
+4. Choose the edited file, enter the intended metadata and effective dates, then click **Upload and process**. The form defaults Approval to `draft`; choose `approved` if the revision should become eligible for current-scope questions when ready and effective.
+5. Check processing and use the **Revision** selector or **History** tab to inspect earlier revisions.
+
+You do not enter a `document_id` in the UI. Opening the existing document selects its ID, and **Add revision** sends it automatically to `POST /v1/documents/{document_id}/versions`. In the document's **Overview** tab, the caption below the applicable dates displays `Document <document_id>` and the source checksum. The open-document URL also includes `?document=<document_id>` (possibly alongside other query parameters). Copy the ID from either place when using cURL; the upload dialog does not have a document-ID input.
+
+If **Add revision** is missing, check the sidebar's **Demo identity** selector and switch to the identity that originally uploaded the document. Read access shared with another identity lets that person inspect the document but does not show the owner-only revision button. Open the document detail page first; the button is not on the document list or in the general upload dialog.
+
+**＋ Add documents** creates new document records. Uploading an edited file there, even with the same filename, does not link it to an earlier document. To preserve revision history, open the original document and use **Add revision**. The revision form does not prefill the previous revision's metadata; enter the intended values again. Files edited on your computer are not uploaded automatically.
+
+### Upload daily changes with cURL
+
+For the first upload, replace the example path with your file:
+
+```bash
+curl -sS -X POST http://localhost:8000/v1/documents \
+  -H 'X-API-Key: analyst-local-key' \
+  -H 'Idempotency-Key: finance-policy-upload-001' \
+  -F 'file=@/absolute/path/finance-policy.pdf' \
+  -F 'metadata={"title":"Finance Policy","document_type":"policy","department_code":"Finance","approval_status":"approved","effective_from":"2026-11-16"}'
+```
+
+Save the returned `document_id`. For each content edit, upload a new revision to that same document, with a new idempotency key and the intended metadata:
+
+```bash
+DOCUMENT_ID='<document_id from first upload>'
+
+curl -sS -X POST \
+  "http://localhost:8000/v1/documents/$DOCUMENT_ID/versions" \
+  -H 'X-API-Key: analyst-local-key' \
+  -H 'Idempotency-Key: finance-policy-revision-002' \
+  -F 'file=@/absolute/path/finance-policy.pdf' \
+  -F 'metadata={"title":"Finance Policy","document_type":"policy","department_code":"Finance","approval_status":"approved","effective_from":"2026-11-17"}'
+```
+
+Set `effective_from` to the actual date the revision takes effect; the dates above are examples. Use the owner's configured API key. Reuse an idempotency key only for an identical retry, including the file, filename, metadata and target document.
+
+Both uploads return HTTP 202 with `document_id`, `version_id` and `run_id`. Poll the returned run ID for processing status, and inspect revision history:
+
+```bash
+RUN_ID='<run_id from upload response>'
+curl -sS "http://localhost:8000/v1/runs/$RUN_ID" \
+  -H 'X-API-Key: analyst-local-key'
+
+curl -sS "http://localhost:8000/v1/documents/$DOCUMENT_ID/versions" \
+  -H 'X-API-Key: analyst-local-key'
+```
+
+If you did not save the document ID, list readable documents and copy the matching `document_id`:
+
+```bash
+curl -sS 'http://localhost:8000/v1/documents?search=finance-policy' \
+  -H 'X-API-Key: analyst-local-key'
+```
+
+### Revision behavior and feedback
+
+New content revisions preserve document identity and earlier revisions. Processing publishes a new immutable revision; current/date/selected-revision scopes determine applicable evidence. A future-effective revision does not immediately become current evidence. **Reprocess with current settings** creates a processing revision from retained original bytes after model/chunking changes; use **Add revision** for an edited file. Publication conservatively invalidates saved results; result reads recheck scope and permissions. Permission revocation can withhold an entire dependent saved answer. Targeted incremental invalidation and production change-data-capture connectors remain roadmap items.
 
 Conflict reports support Confirm/Dismiss/Unresolved decisions with rationale, audit events and optimistic version checking. Clarification resumes the durable graph thread; follow-ups create linked owned runs. General answer rating, correction datasets and an automated feedback-to-training loop are not implemented.
 
