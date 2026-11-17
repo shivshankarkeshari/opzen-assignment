@@ -16,7 +16,8 @@ x-app-environment: &app-environment
   EMBEDDING_MODEL: BAAI/bge-base-en-v1.5
   EMBEDDING_REVISION: a5beb1e3e68b9ab74eb54cfd186867f64f240e1a
   EMBEDDING_DIMENSIONS: "768"
-  CHUNK_TOKENS: "450"
+  CHUNK_TOKENS: ${CHUNK_TOKENS:-450}
+  CHUNK_MIN_TOKENS: ${CHUNK_MIN_TOKENS:-100}
   HF_HOME: /root/.cache/huggingface
   DOCLING_ARTIFACTS_PATH: /root/.cache/docling/models
   LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:?Run scripts/configure_local.py first}

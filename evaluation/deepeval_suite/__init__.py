@@ -17,3 +17,5 @@ os.environ["DEEPEVAL_DISABLE_LEGACY_KEYFILE"] = "1"
 # This only affects this process; saved logins and env files are not modified.
 os.environ["CONFIDENT_API_KEY"] = ""
 load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
+# Retry ownership stays with durable metric checkpoints, not hidden SDK loops.
+os.environ["DEEPEVAL_RETRY_MAX_ATTEMPTS"] = "1"

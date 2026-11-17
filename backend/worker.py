@@ -244,12 +244,26 @@ class Ingestion:
                         if self.config.get("embedding_backend") == "huggingface"
                         else None,
                         model_revision=self.config.get("embedding_revision", ""),
+                        min_tokens=self.config.get("chunk_min_tokens", 100),
                     )
                 )
             except ValueError as exc:
                 raise ReviewRequired(str(exc)) from exc
         with transaction() as session:
             _, _, version = self.guard(session)
+            counts = [chunk["token_count"] for chunk in chunks]
+            version.quality_report = {
+                **version.quality_report,
+                "chunking": {
+                    "strategy": self.config.get("chunking_strategy", "docling_source_aware_v2"),
+                    "minimum_body_token_target": self.config.get("chunk_min_tokens", 100),
+                    "min_context_tokens": min(counts),
+                    "max_context_tokens": max(counts),
+                    "chunks_below_context_target": sum(
+                        n < self.config.get("chunk_min_tokens", 100) for n in counts
+                    ),
+                },
+            }
             for i, data in enumerate(chunks):
                 sources = data.pop("sources")
                 data["section_ref"] = (

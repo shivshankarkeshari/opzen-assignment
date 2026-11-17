@@ -1,122 +1,130 @@
-# Evaluation automation plan
+# Evaluation automation and durability roadmap
 
-Status: **design only**. This document does not add a scheduler, CI workflow, ranking evaluator, monitoring collector or new model run. Application and evaluation use the root `.venv`, `.env`, `pyproject.toml` and `uv.lock`; no Confident AI key is needed. Existing model/metric thresholds and raw scores remain unchanged.
+Updated 17 November 2026. This is the single execution guide and next-phase plan. [Latest results](evaluation-results.md) are the authoritative scorecard. The detached runner is implemented; **Temporal and the proposed LangGraph evaluator are design only**.
 
-“Answer correction” is interpreted below as **answer correctness**. A separate user-correction/feedback workflow is also included as proposed product work.
+## Current runner: start, inspect, resume and stop
 
-## 1. Current coverage versus requested metrics
+Application and evaluation share the root `.env`, `.venv`, dependencies and lockfile. No Confident AI key is needed.
 
-| Area / metric | Considered or implemented now | Automation still needed |
-|---|---|---|
-| Faithfulness | DeepEval metric, threshold 0.8; requires actual claims and evidence. Empty answers are not applicability passes. | Independent/calibrated judge, per-claim audit and reproducible run comparison. |
-| Answer correctness | G-Eval against curated reference/required facts, threshold 0.7. Lexical term checks remain separate diagnostics. | Atomic-fact completeness checks for amount, unit, role, independence, dates, exceptions and conflict/precedence conclusions. |
-| Answer relevance | DeepEval Answer Relevancy, threshold 0.7. | Report relevance separately from correctness/completeness. |
-| Context relevance | DeepEval Contextual Relevancy, threshold 0.7, on actual delivered context. | Evaluate both candidate retrieval and final context packing without mixing their results. |
-| Context precision | DeepEval Contextual Precision, threshold 0.7. | Preserve ordered retrieval results; current synthesis ledger order is not raw retrieval rank. |
-| Context recall | DeepEval Contextual Recall, threshold 0.7 where reference facts/context exist. | Separate document-grounded facts from application-control expectations in references; version any revised scoring policy. |
-| MRR@k | **Not implemented or measured.** | Ordered results plus human-reviewed relevance labels; compute first-relevant-hit rank. |
-| nDCG@k | **Not implemented or measured.** | Ordered results plus graded relevance labels and a declared gain/discount policy. |
-| Retrieval latency | Local five-request API/search smoke measurements exist; retrieval stages are instrumented. | Per-attempt timing, stage breakdown, controlled p50/p95/p99 distributions and regression gates. |
-| LLM latency | Generation observations have timing; calls are bounded. | Aggregate planner/synthesis/verification and retry timing per application run, by provider/model. |
-| End-to-end latency | Workflow progress exists. DeepEval's per-case `seconds` is judge execution time, not application response time. | API receipt, queue entry, worker start and terminal timestamps; report queue wait, processing time and total duration separately. |
-| Token usage | Provider usage is recorded when returned. | Aggregate every model call and failed/retried attempt; retain missing usage as unknown. |
-| Cost/query | Assumption-based cost worksheet exists; no measured billed application cost/query. | Dated provider/model pricing, usage completeness and optional apportioned compute/embedding/reranking costs. Separate judge cost. |
-| Retrieval failure | Encoder/database/tool errors can produce explicit failure outcomes. | Structured failure taxonomy and rates with stable denominators. |
-| Empty retrieval | Search can return no items/no compatible sources; an expected no-eligible-source golden case exists. | Distinguish expected abstention, unexpected empty results, and execution failures. |
-| Regression tests | Existing application tests and evaluator-safety tests cover substantial control flow and integrity. Latest verification: 24 passed/16 integration tests skipped; 12 evaluator tests passed. | CI stages, automatic model-quality comparisons, ranking labels, operational budgets and held-out evaluation. |
+```bash
+uv run --frozen python -m evaluation.deepeval_suite.background status \
+  --output evaluation/deepeval_suite/results/chunking-v2-durable-20261116-1
 
-The restored LFM baseline ran only integrity, correctness and faithfulness. The retained GPT-SOL run attempted the broader seven-metric set. No ranking or system-performance result should be inferred for an unmeasured metric.
+uv run --frozen python -m evaluation.deepeval_suite.background start \
+  --output evaluation/deepeval_suite/results/chunking-v2-durable-20261116-1
 
-## 2. Evaluation data contract
+uv run --frozen python -m evaluation.deepeval_suite.background stop \
+  --output evaluation/deepeval_suite/results/chunking-v2-durable-20261116-1
 
-Freeze and hash: source PDFs, golden cases, expected applicability, actor/permissions, reference date, processing profile, embedding model/revision, chunking configuration, application Git SHA, prompts/schema, generator and judge models, judge rubric version, runtime versions and budgets.
+# Fresh experiment: use a new directory, not the consolidated result.
+uv run --frozen python -m evaluation.deepeval_suite.background start \
+  --predictions evaluation/financial-v1/results-20261116-175816.jsonl \
+  --output evaluation/deepeval_suite/results/my-new-experiment --max-cases 30
+```
 
-Add two distinct artifacts in the proposed collection stage:
+These commands are examples, not new runs started during consolidation. The canonical run has processed all cases but retains ten errors. Merged checkpoint counts include original and retry attempts: exhausted failures will not retry under the default two-attempt cap. Increase a cap explicitly only after addressing the cause; valid low scores are never retried to select a better score.
 
-- **Retrieval log:** question/subquery, actor/scope/date, iteration, tool, ordered dense/keyword/fused candidates, rank/distance/RRF score, canonical source/revision locators, and the final context order after expansion/deduplication. Do not sort by gold relevance or use final citations as relevance labels.
-- **Operational log:** run/case/trace/observation IDs, request/queue/worker/terminal timestamps, per-retrieval and per-model attempt durations/status, token categories, price version, observed cost, missing-usage flags and stop reason.
+Implemented behavior:
 
-Use frozen content hashes and source locators for relevance labels rather than installation-specific database UUIDs alone. Keep reference answers and relevance judgments outside generator/retriever inputs. The existing 55 source quotes seed positive labels but are not exhaustive ranked chunk judgments; unjudged candidates must not silently become irrelevant.
+- Detached workers survive terminal/chat disconnection; they do not auto-restart after reboot. Use `start` to resume.
+- Atomic per-metric checkpoints and attempt history retain completed work. Successful metrics, including low scores, are reused. A crash may replay the in-flight metric.
+- Input, label, judge/config and evaluator-code hashes protect compatible resume. `durable_batched_v2` uses bounded context batches and strict faithfulness scoring. Prompt changes require protocol versioning.
+- An endpoint lock prevents duplicate local workers. Keep concurrency one for the current single-request gateway; extra ports do not multiply account quota.
+- Quota/authentication/rate-limit errors pause; isolated deadline/transport errors are recorded, with a pause after three consecutive such failures. SDK retries are disabled; explicit resumes are capped per metric.
+- `job.json`, `progress.json`, `run.log`, `requests.jsonl`, checkpoints and summaries expose identity, active metric, attempts, timings and returned token usage. Unknown usage/cost is not zero.
+- Context batches retain IDs/order and statement-weighted scores, with no truncation. FIN-001 needed six calls instead of 27; larger evidence sets need additional batches.
+- The current Codex bridge remains a CLI process per inference and checks token usage after generation. HTTP pooling does not remove upstream quotas or enforce an upstream output-token cap. Stopping a worker cannot guarantee provider-side cancellation or exactly-once billing.
+- Langfuse tracing/datasets exist; automatic evaluator-score synchronization is not implemented. Final-context precision is not raw retrieval MRR/nDCG.
 
-For offline reevaluation of saved outputs, explicitly label which outputs, evidence and telemetry were actually captured. Missing rank/timing/usage data is **not measured**; do not reconstruct it from evidence-ID order or invent application latency from judge timings.
+## Next phase: Temporal orchestration with existing metrics
 
-## 3. Retrieval ranking evaluation
-
-Create a reviewed qrels file per frozen query/scope. Grade candidates, for example: 0 irrelevant, 1 useful background, 2 supports part of the answer, 3 essential evidence/exception. Adjudicate ambiguous labels, annotate both sides of comparisons and review high-ranked previously unjudged candidates.
-
-- `MRR@k = mean(1 / rank_of_first_relevant_result)`, with 0 when no relevant result occurs within k. Define the relevance cutoff and k before evaluating; proposed reporting depths are 5, 10 and 20.
-- `DCG@k = sum((2^grade - 1) / log2(rank + 1))`; `nDCG@k = DCG@k / ideal_DCG@k` using the same gain policy. Cases with no eligible positive judgments have undefined ranking utility and are reported separately, not divided by zero.
-- Report dense, lexical, fused and final packed context as different rankings. Section expansion can improve evidence coverage while introducing irrelevant passages; evaluate its tradeoff explicitly.
-- Single-hit MRR does not establish a complete multi-hop answer. Add required-fact coverage, required-document-side coverage and exception/qualifier coverage alongside ranking metrics.
-- Expected no-source, restricted-source and clarification cases get abstention/access/control checks. They do not receive artificial positive recall/MRR/nDCG scores.
-
-MRR/nDCG acceptance thresholds must be calibrated on reviewed held-out relevance labels. There is no measured current baseline for them.
-
-## 4. Operational definitions
-
-| Measure | Proposed definition |
-|---|---|
-| Retrieval latency | Monotonic elapsed time per search attempt, with query encoding and SQL/fusion/expansion measured separately. |
-| LLM latency | Per provider attempt, plus the sum across planning, synthesis and verification. Include failures/retries; optionally distinguish time-to-first-token where streaming actually exists. |
-| End-to-end latency | Terminal result time minus API request receipt; queue wait and worker processing are separate components. A resumed clarification also reports user-wait time separately. |
-| Token usage | Input, output, cached and reasoning tokens when actually reported. Avoid double-counting provider totals or treating unreported categories as zero. |
-| Cost/query | Sum all application model attempts using dated model/provider prices, with cached-token rules where known. Show generation, embedding/reranking/compute attribution and judge costs separately. Unknown pricing/usage produces unknown cost, not $0. |
-| Retrieval failure rate | Failed retrieval attempts / retrieval attempts, plus affected-query count. Categorize encoder, invalid-vector/profile, database, timeout, scope/access and tool-argument failures. |
-| Empty retrieval rate | Successful eligible searches returning zero items / successful eligible searches. Also report query-level unexpected-empty count for answerable cases with authorized sources. |
-
-No applicable ready revision is an expected outcome for some cases, not a database failure. Source-access denials must not leak whether inaccessible documents exist. A later insufficient answer is not proof that retrieval was empty: evidence may have been found but the model failed to use it.
-
-Report distributions by scenario, model, document type, OCR/native input and corpus version. A five-request smoke p95 is simply the maximum sample and is unsuitable as a stable production SLA. Establish controlled sample sizes and hardware/provider conditions before latency gates.
-
-## 5. Proposed automated workflow
+**Recommendation:** migrate job lifecycle first while retaining the metric backend. Temporal supplies orchestration, not judge accuracy or extra provider quota. Avoid changing orchestration and scoring in the same experiment.
 
 ```mermaid
 flowchart TD
-    A[Code/config change or scheduled trigger] --> B[Lock dependencies and validate dataset hashes]
-    B --> C[Deterministic regression tests]
-    C --> D[Collect authorized application results and telemetry]
-    D --> E[Offline ranking and integrity metrics]
-    D --> F[Bounded semantic judging]
-    E --> G[Complete coverage/error-aware scorecard]
-    F --> G
-    G --> H[Compare with compatible baseline]
-    H --> I[CI decision and human review]
-    G --> J[Optional Langfuse scores and dataset experiment]
+    A[Manual / CI / scheduled request] --> B[Temporal EvalRun workflow]
+    B --> C[Validate immutable manifest and budgets]
+    C --> D[Load saved outputs or collect fresh app outcomes]
+    D --> E[Case child workflows]
+    E --> F[Metric Activity: cached result lookup]
+    F --> G[Provider-wide rate / concurrency gate]
+    G --> H[Bounded judge and schema validation]
+    H --> I[Persist attempt and result]
+    I --> J[Coverage-aware summary and regression gates]
+    J --> K[Report / optional Langfuse score publication]
 ```
 
-**Every pull request:** dependency/config/schema checks, Ruff, mocked unit tests, offline golden validation and evaluator-safety tests. Use the root environment. No paid model calls or personal CLI credentials on untrusted/forked PRs. Integration tests run only against isolated test database/bucket resources, never the demonstration corpus.
+### 1. Freeze the experiment contract
 
-**Opt-in smoke evaluation:** a small representative subset covering direct lookup, cross-page exception conditions, multi-hop/follow-up, comparison/conflict and missing/access-controlled information. Keep dependencies/parent questions inside the selected cap. Run deterministic scoring first, then only applicable semantic metrics.
+Hash source PDFs, cases, reference date, actor/scope, processing/embedding/chunking profile, predictions, generator/judge configuration, prompts/schemas, metric protocol and thresholds. Distinguish re-judging saved outputs from fresh end-to-end collection. Fresh follow-ups depend on parent generation; saved follow-up scoring loads frozen parent context.
 
-**Scheduled or explicit full evaluation:** all 30 development cases plus a separately maintained unseen corpus. Pin configuration, collect raw outputs and ordered retrieval/operational logs, then evaluate them. Fresh end-to-end runs and re-judging saved answers are different experiments and must be labeled accordingly.
+Use a result key such as `(run_id, case_id, metric_id, protocol, input_hash, judge_config_hash)`. Store large artifacts in MinIO and metadata/results in a separate evaluation schema or service. Do not silently expand the assignment's existing 12 application tables. Pass artifact references through workflow state, not complete PDFs, credentials or evidence payloads.
 
-**Execution safety:** inherit the application's maximum five iterations and finite model-call budget. Apply provider-wide bounded concurrency/rate limits across workers—not just one semaphore per port. Configure per-request, per-case, per-run, token and cost budgets. A quota/usage-limit failure opens a circuit breaker and leaves remaining semantic metrics not run/inconclusive; do not keep sending calls. Retry only approved transient failures, at most once, preserving the original attempt. Never rerun a valid low score to select a better judgment.
+### 2. Define deterministic workflows and bounded Activities
 
-**Collection:** write per-case records incrementally; retain interrupted-run status, errors, applicability and coverage. A final summary means the selected execution ended, not that all metrics succeeded. Preserve denominators and output baseline differences in JSON plus a readable Markdown scorecard. Validate source hashes before comparing runs.
+The workflow schedules work, aggregates states, maintains budgets and waits for operator signals. Put model/API calls and storage I/O in Activities outside its deterministic replay path. One metric Activity gives a clear persistence/retry boundary; expensive context batches can have their own boundary. Case child workflows provide isolation.
 
-**Dashboard:** optionally attach deterministic/semantic scores to actual Langfuse trace/observation IDs and link dataset experiment items. Use stable score IDs for idempotency, preserve reasons and label errors separately. Application run UUIDs are not Langfuse trace IDs. Raw references/evidence require an explicit data-capture/access policy; a metadata-only trace cannot itself support faithfulness judging.
+Configure explicit request, Activity and run deadlines plus maximum attempts. Use heartbeats for long Activities and cooperative cancellation. Cache successful results before a call and persist each result before Activity completion using unique keys/upserts. A crash after an LLM response but before persistence can still duplicate a paid request; Temporal cannot guarantee external exactly-once billing. Use provider idempotency only where actually supported.
 
-## 6. Regression matrix and gates
+This follows Temporal's documented distinction between deterministic Workflows and failure-prone Activities. Retry policies must be bounded for model calls rather than relying on defaults. [Workflow definition](https://docs.temporal.io/workflow-definition), [retry policies](https://docs.temporal.io/encyclopedia/retry-policies).
 
-| Group | Regression scenarios and required assertion |
+### 3. Implement execution policy and scheduling
+
+- Enforce provider/account limits globally across workers, not one semaphore per port. Start with concurrency one for the current gateway; raise it only against measured native inference capacity.
+- Pause on quota/authentication; resume through an explicit operator signal after remediation. Treat transient network/timeout errors separately with capped backoff and recorded attempts. Never rerun a valid low score.
+- Apply time, token and optional monetary budgets. Log input/output/cache/reasoning tokens only when reported; separate application and judge cost and retain unknown values.
+- Run deterministic/schema/security tests on every PR. Model calls are opt-in; avoid personal credentials on untrusted CI. Use isolated test database/bucket resources.
+- Schedule representative smoke cases first, then full/held-out evaluation. Configure schedule overlap policy so a slow run does not spawn duplicate billing.
+- Optionally publish scores to actual Langfuse trace/observation IDs with stable score IDs. An application run UUID is not necessarily a Langfuse trace ID. Preserve access policy for references/evidence.
+
+### 4. Acceptance and rollout
+
+Kill workers during inference, after a metric finishes and during result persistence. Verify recovery, source-hash validation, no repeat of completed scores, attempt history, quota pause/resume, duplicate-launch prevention, capped cancellation and error-aware summaries. Test malformed JSON/IDs, deadlines, missing usage, storage failures and changed configs.
+
+Then validate a small representative set with human review before scheduling all 30 cases plus unseen cases. No production accuracy or load claim follows from the five synthetic PDFs.
+
+| Benefits | Drawbacks |
 |---|---|
-| Ingestion and daily updates | Duplicate upload/idempotency, unsupported/corrupt input, OCR/table fixtures, failed batch recovery, processing-profile changes, source hashes, page offsets and new revision freshness. |
-| Retrieval | Known fact recall, exact keyword/amount queries, correct historic/current version, wrong record class, both comparison sides, cross-page continuation, unexpected empty results, embedding dimension/profile rejection and stable ordered ranking artifacts. |
-| Generation | Amount/currency/unit/boundary correctness, minimum versus maximum, exceptions, independent approver roles, supported unknowns, no fabricated precedence, complete required facts and exact source quotes. |
-| Agent/controller | Five-iteration hard cap, model-call/deadline cap, no-progress exit, invalid IDs, missing-fact repair, checkpoint recovery without resetting budgets, clarification single-use resume and follow-up context. Some repair/coverage checks are desired behavior, not yet implemented features. |
-| Security | Identity isolation, restricted-register non-disclosure, revoked-source saved answers, source reopening authorization and prompt-injection resistance. Metadata/logging must not reveal credentials or protected source text. |
-| Review and correction | Existing conflict review version checks/audit. Planned answer correction: store original answer, correction and reviewer rationale separately; preserve history, add reviewed cases to a versioned dataset and rerun affected tests. General feedback intake is not implemented now. |
-| Evaluator reliability | No empty-answer faithfulness pass; correct not-applicable logic; provider errors never treated as correct abstentions; low scores never selected by error-only retries; truncated/invalid judge output rejected; means retain error denominators; references and ranks not leaked to the generator. |
-| Environment and observability | Root env loading, shared dependencies, no Confident AI key requirement, redaction, stable correlation IDs, token/cost null handling and missing-timestamp behavior. |
+| Durable history, worker recovery, timers and explicit retry/cancellation policies. | Extra service/worker deployment, operational cost and replay/versioning discipline. |
+| Central scheduling, operator-driven resume and workflow-level budgets. | Still needs provider-wide rate limits, idempotent persistence and carefully bounded attempts. |
+| Scale execution without replacing current scoring. | Cannot fix judge output, increase account quota or eliminate ambiguous in-flight billing. |
 
-**Hard gates:** source/scope/access/citation violations fail. A budget violation or an unsupported substantive answer fails. Preserve existing semantic thresholds (0.7, faithfulness 0.8, integrity 1.0) unless a separately versioned, reviewed policy changes them. Require coverage for every applicable metric; provider failures make that quality check inconclusive, not a pass. Control-flow tests do not certify model accuracy.
+Acceptance: an opted-in run survives worker death and produces one auditable, coverage-aware scorecard without repeating completed paid work except documented in-flight ambiguity. This is proposed work; no Temporal service or SDK has been added.
 
-**Baseline gates:** compare only compatible datasets, judges/rubrics and pipeline versions, with scenario breakdowns. Set allowed quality and p95/cost deltas after collecting a representative baseline and reviewed labels; do not invent an MRR/nDCG or production latency target from the current tiny sample. Model changes need a controlled experiment and human review of disagreements. Keep known benchmark defects such as mixed source/security reference expectations visible until corrected in a new rubric version.
+## Following phase: LangGraph-based evaluation instead of DeepEval
 
-## 7. Delivery order
+**Feasible, but LangGraph is an orchestrator, not a drop-in metric library.** We must implement, test and calibrate the judging definitions and score formulas ourselves. A node named “faithfulness” does not establish equivalence to a DeepEval metric.
 
-1. **P0: reproducible collection and reporting.** Frozen manifests, scenario/applicability mapping, incremental artifacts, explicit failure taxonomy, judge calibration and deterministic CI. Preserve the two restored/retained 30-case baselines unchanged.
-2. **P1: missing measurements.** Ordered candidate logs and reviewed qrels for MRR/nDCG; fact/document-side coverage; per-query latency/token/cost aggregation with explicit unknown values.
-3. **P2: scheduled runs and review.** Provider-aware bounded execution, circuit breaking, compatible-baseline gates, held-out cases, Langfuse score/experiment linkage and correction review queues.
+```mermaid
+flowchart LR
+    A[Load immutable case] --> B[Applicability + integrity]
+    B --> C[Bounded metric tasks / judge batches]
+    C --> D[Validate schema and item coverage]
+    D --> E[Deterministic score formulas]
+    E --> F[Persist score and attempt]
+    F --> G[Aggregate / human review]
+```
 
-Acceptance: one opted-in run produces an auditable manifest, raw application outputs, ranked candidates, operational measurements, metric/applicability/error records, and a final readable scorecard without modifying gold labels or hiding failed attempts. Until these stages are implemented, the current suite remains manually invoked and the missing metrics remain not measured.
+Use PostgreSQL checkpointers with stable thread IDs and explicit task/node boundaries around external calls. Retain result idempotency keys and the same external-call crash caveat. A checkpointer needs a running worker to resume execution; it does not by itself create a production scheduler or account-wide limiter. [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence), [graph API and retry boundaries](https://docs.langchain.com/oss/python/langgraph/graph-api).
+
+Create a framework-neutral metric interface returning typed statements/verdicts, reason, deterministic score, threshold, applicability, protocol, usage and errors. Preserve source IDs/order, exact quotes, statement weighting and coverage validation. Permit at most one separately recorded schema repair, with a finite node/call budget; do not implement a “judge until pass” loop. Treat evaluated text as untrusted data.
+
+Version a new protocol for changes in extraction, grouping, unsupported-claim treatment or thresholds. Compare LangGraph and DeepEval on frozen cases with the same judge configuration. Measure human agreement, disagreements, completion rate, calls, tokens and latency. Inspect material differences; do not merge scores from different protocols or demand numerical equality for changed methods.
+
+| Option | Benefits | Drawbacks |
+|---|---|---|
+| Temporal + DeepEval | Mature metric ecosystem; lowest scoring migration risk; durable operational control. | Built-in multi-step costs and custom adapter maintenance remain. |
+| LangGraph + custom metrics | Reuses project stack; transparent batching, validation, branching and review; persisted graph state. | We own metric definitions, calibration, reports, regression tests and failure semantics. |
+| Temporal outside, LangGraph inside an Activity | Temporal manages schedules/worker recovery; LangGraph manages evaluation logic. | Two persistence systems; duplicate retries unless ownership is assigned explicitly. |
+
+**Recommended order:** stabilize Temporal with current metrics, then pilot LangGraph as a separate backend. Keep Temporal as outer scheduler if it still adds operational value. Adopt a custom evaluator only after measured benefits justify maintaining its scoring suite.
+
+## Measurement backlog and gates
+
+- Retrieval: capture raw ranked candidates and final packed context separately. Add reviewed relevance labels for MRR@k/nDCG@k and required-fact/document-side coverage for multi-hop. Ranking metrics are not measured now.
+- Generation: correctness, strict faithfulness, relevance, amounts/units/dates/roles/conditions, exact citations and honest abstention. General answer-correction intake remains proposed.
+- Operations: encoding/SQL/retrieval/LLM/queue/end-to-end timing distributions, reported tokens, priced cost with explicit unknowns, retrieval failures, expected versus unexpected empty retrieval. Judge timing is not app response time.
+- Regression/security: identity isolation, restricted sources, revoked permissions, prompt injection, daily revision freshness, maximum five app exploration iterations, no-progress exits and immutable history.
+- Gates: fail scope/access/citation violations; execution errors make the affected quality gate inconclusive. Always show scored/error/not-applicable denominators. Compare compatible manifests/protocols and calibrate latency/ranking/cost limits on representative data.
+
+No framework removes upstream latency/quotas or the need for independent labels and human calibration.

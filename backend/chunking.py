@@ -6,6 +6,60 @@ from docling_core.types.doc import DoclingDocument
 from backend.storage import digest
 
 
+def _merge_short_chunks(chunks, chunker, min_tokens, max_tokens):
+    """Pack related text without crossing unrelated headings or losing item provenance."""
+    count = chunker.tokenizer.count_tokens
+
+    def candidate(left, right):
+        if any(
+            any(item.label in {"table", "picture", "caption"} for item in chunk.meta.doc_items)
+            for chunk in (left, right)
+        ):
+            return None
+        a, b = list(left.meta.headings or []), list(right.meta.headings or [])
+        common = []
+        for first, second in zip(a, b):
+            if first != second:
+                break
+            common.append(first)
+        if a != b and not common:
+            return None
+
+        def body(chunk, headings):
+            suffix = headings[len(common) :]
+            return "\n\n".join([*suffix, chunk.text])
+
+        items = {item.self_ref: item for item in [*left.meta.doc_items, *right.meta.doc_items]}
+        merged = left.model_copy(
+            update={
+                "text": body(left, a) + "\n\n" + body(right, b),
+                "meta": left.meta.model_copy(
+                    update={"headings": common or None, "doc_items": list(items.values())}
+                ),
+            }
+        )
+        return merged if count(chunker.contextualize(merged)) <= max_tokens else None
+
+    chunks = list(chunks)
+    index = 0
+    while index < len(chunks):
+        if count(chunks[index].text) >= min_tokens:
+            index += 1
+            continue
+        # Prefer the previous neighbor, then the next; always retain reading order.
+        for start in (index - 1, index):
+            if start < 0 or start + 1 >= len(chunks):
+                continue
+            merged = candidate(chunks[start], chunks[start + 1])
+            if merged is not None:
+                chunks[start : start + 2] = [merged]
+                index = start
+                break
+        else:
+            index += 1
+    return chunks
+
+
 def chunk_document(
     canonical: dict,
     namespace: str,
@@ -14,6 +68,7 @@ def chunk_document(
     encoding: str,
     model_name: str | None = None,
     model_revision: str = "",
+    min_tokens: int = 100,
 ) -> list[dict]:
     document = DoclingDocument.model_validate(canonical)
     if model_name:
@@ -30,10 +85,16 @@ def chunk_document(
             tokenizer=tiktoken.get_encoding(encoding), max_tokens=max_tokens
         )
     chunker = HybridChunker(
-        tokenizer=tokenizer, merge_peers=False, repeat_table_header=True, always_emit_headings=True
+        tokenizer=tokenizer, merge_peers=True, repeat_table_header=True, always_emit_headings=False
+    )
+    chunks = _merge_short_chunks(
+        [chunk for chunk in chunker.chunk(document) if chunk.text.strip()],
+        chunker,
+        min(min_tokens, max_tokens),
+        max_tokens,
     )
     output = []
-    for chunk in chunker.chunk(document):
+    for chunk in chunks:
         text = chunker.contextualize(chunk)
         tokens = tokenizer.count_tokens(text)
         if not text.strip():

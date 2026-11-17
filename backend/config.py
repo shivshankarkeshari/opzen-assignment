@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     max_pages: int = Field(200, ge=1)
     pdf_batch_pages: int = Field(20, ge=1)
     chunk_tokens: int = Field(450, ge=64)
+    chunk_min_tokens: int = Field(100, ge=0)
     tokenizer_encoding: str = "cl100k_base"
     docling_artifacts_path: str = ""
     ocr_enabled: bool = True

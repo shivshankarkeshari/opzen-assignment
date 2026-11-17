@@ -12,7 +12,7 @@
 
 All library requests returned five authorized documents; each search returned four hits. The stored corpus previously verified 60 normalized 768-dimensional BGE vectors for 60 chunks. The UI replay passed 64/64 checks. These results do not measure ingestion/OCR throughput, end-to-end answer latency or concurrent users; those measurements remain a production-readiness gap.
 
-The completed first-pass evaluation has per-case `seconds` and `judge_requests` in [results.jsonl](../evaluation/deepeval_suite/results/codex-gpt-6.1-sol-30/results.jsonl). These are evaluation timings, not application answer timings. It recorded 69 judge-metric errors across 20 cases. Codex gateway deadlines and per-passage judging make it unsuitable to infer an application latency SLA from that run.
+The [latest evaluation summary](evaluation-results.md) separates scored metrics from errors. Per-case and judge request timings describe evaluator work, not application latency. Consolidated attempt logs retain original/retry provenance; no application latency SLA is inferred from them.
 
 ## One-million-document sizing assumptions
 

@@ -178,6 +178,7 @@ def submit(
             version_id, run_id, job_id = new_id(), new_id(), new_id()
             names = [
                 "chunk_tokens",
+                "chunk_min_tokens",
                 "tokenizer_encoding",
                 "ocr_enabled",
                 "pdf_batch_pages",
@@ -191,7 +192,11 @@ def submit(
                 "embedding_dimensions",
             ]
             config = {name: getattr(settings(), name) for name in names}
-            config.update(docling_version=package_version("docling"), schema_version=1)
+            config.update(
+                docling_version=package_version("docling"),
+                schema_version=1,
+                chunking_strategy="docling_source_aware_v2",
+            )
             version = Version(
                 version_id=version_id,
                 document_id=doc_id,

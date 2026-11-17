@@ -21,7 +21,7 @@ pass the resulting prediction file to DeepEval. For five cases from the retained
 ```bash
 uv run python \
   -m evaluation.deepeval_suite.run \
-  --predictions evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl \
+  --predictions evaluation/financial-v1/results-20261116-175816.jsonl \
   --max-cases 5 \
   --output evaluation/deepeval_suite/results/my-evaluation-run
 ```
@@ -44,6 +44,12 @@ python3 -m json.tool evaluation/deepeval_suite/results/my-evaluation-run/summary
 Application collection alone saves responses and automatic diagnostics, not these semantic metric scores. The saved generated answer is at `response.result.claims[].text` in the prediction JSONL. Stopping DeepEval early preserves completed-case rows but may leave no final summary.
 
 ## Metrics and configuration
+
+The current protocol is **`durable_batched_v2`**, recorded in every result and summary. It uses DeepEval metric classes and their score formulas with fewer judge round trips. Answer relevancy and faithfulness each extract and judge statements in one structured response. Contextual relevancy judges multiple evidence items per request while retaining item IDs and statement verdicts. Precision and recall use their built-in verdict calls with separate explanation calls disabled; reference correctness remains G-Eval. For FIN-001's 14 evidence items this reduces the complete suite from 27 to **6 judge calls**. Larger evidence sets use additional bounded contextual-relevancy batches.
+
+`DEEPEVAL_CONTEXT_BATCH_MAX_ITEMS=16` and `DEEPEVAL_CONTEXT_BATCH_MAX_CHARS=8000` can be configured in the root `.env`. No evidence is truncated or silently omitted. Missing/duplicate context IDs and oversized individual context items raise errors. Contextual relevance is weighted by individual statements across batches, not by averaging batch scores. Detailed verdicts are retained in metric verbose logs. This changes extraction/judging prompts, so new semantic scores must not be treated as identical to the earlier staged protocol or combined with its partial scores. Cross-protocol error-only retries are rejected; run selected cases afresh. Faithfulness now penalizes ambiguous/unsupported claims.
+
+Quota, authentication and rate-limit failures pause immediately. Isolated timeouts are checkpointed; three consecutive timeouts pause the job. `stopped_reason` and `pending_case_ids` in `summary.json` distinguish a stopped run from a complete one. There are no automatic retries. Per-case start messages show progress before the full set of metric scores is written.
 
 | Metric | Threshold |
 |---|---:|
@@ -71,6 +77,6 @@ Regression checks use mocked HTTP, make no model requests and run from the repos
 uv run python -m unittest evaluation.deepeval_suite.test_suite
 ```
 
-## Restored historical baseline and automation plan
+## Latest results and execution plan
 
-The original LFM run is available in [results/20261115T134006Z/](results/20261115T134006Z/summary.json). Its application predictions are retained with matching SHA-256 provenance. It evaluated three metrics only. See [model comparison findings](../../docs/lfm-vs-gpt-sol-findings.md) and the [evaluation automation plan](../../docs/evaluation-automation-plan.md) for current coverage, missing ranking/monitoring metrics and proposed regression gates.
+Use the [consolidated results](../../docs/evaluation-results.md) for the current 30-case scorecard and execution-error denominators. The [automation and durability plan](../../docs/evaluation-automation-plan.md) includes background start/status/stop/resume instructions and proposed Temporal/LangGraph phases.

@@ -1,0 +1,97 @@
+{
+  "updates": [
+    {
+      "case_id": "FIN-001",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_score": null
+    },
+    {
+      "case_id": "FIN-005",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": null,
+      "new_score": 0.04878048780487805
+    },
+    {
+      "case_id": "FIN-009",
+      "metric": "Faithfulness",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": null,
+      "new_score": 1.0
+    },
+    {
+      "case_id": "FIN-012",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_score": null
+    },
+    {
+      "case_id": "FIN-013",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 502: provider_request_failed",
+      "new_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_score": null
+    },
+    {
+      "case_id": "FIN-014",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": null,
+      "new_score": 0.0223463687150838
+    },
+    {
+      "case_id": "FIN-015",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": "ValueError: Judge omitted, duplicated or invented context IDs",
+      "new_score": null
+    },
+    {
+      "case_id": "FIN-017",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": null,
+      "new_score": 0.2830188679245283
+    },
+    {
+      "case_id": "FIN-020",
+      "metric": "Answer Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": null,
+      "new_score": 1.0
+    },
+    {
+      "case_id": "FIN-020",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": null,
+      "new_score": 0.11864406779661017
+    },
+    {
+      "case_id": "FIN-022",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": null,
+      "new_score": 0.018867924528301886
+    },
+    {
+      "case_id": "FIN-024",
+      "metric": "Faithfulness",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": null,
+      "new_score": 0.75
+    },
+    {
+      "case_id": "FIN-030",
+      "metric": "Contextual Relevancy",
+      "old_error": "RuntimeError: Judge HTTP 504: provider_deadline",
+      "new_error": "ValueError: Judge omitted, duplicated or invented context IDs",
+      "new_score": null
+    }
+  ],
+  "base_before_sha256": "84cf2899725387ed6c375c7648040990fb703b69b92dbb0fced37c0a46016dc9",
+  "retry_sha256": "e4dde76a6937cc301ac7cf7498e3864530e6d9810f9eef016eead1ad7f94efa4"
+}

@@ -1,45 +1,51 @@
-# Evaluation results
+# Latest evaluation results
 
-These are synthetic development-regression results, not held-out production accuracy. The model used for generation and judging was Codex CLI `gpt-6.1-sol`; same-model judging can produce correlated errors.
+Updated 17 November 2026. This is the single current results summary; older incomplete model baselines have been removed.
 
-## Application and UI
+## Canonical artifacts
 
-- Five original PDFs, three pages each; 30 golden cases and 55 PDF-verified references.
-- Final application predictions: 28/30 automatic diagnostics pass; no provider-blocked application outcomes remain after seven explicitly documented retries.
-- FIN-011 omits the seven-year retention minimum and the second required document citation.
-- FIN-030 gives the correct equivalent date “December 31, 2026”; its lexical ISO-date check falsely fails.
-- Streamlit replay: 64/64 rendering checks; displaying an answer is not a semantic quality pass.
+- [30-case results](../evaluation/deepeval_suite/results/chunking-v2-durable-20261116-1/results.jsonl)
+- [Recomputed summary](../evaluation/deepeval_suite/results/chunking-v2-durable-20261116-1/summary.json)
+- [Consolidation audit](../evaluation/deepeval_suite/results/chunking-v2-durable-20261116-1/consolidation.json)
+- [Application predictions](../evaluation/financial-v1/results-20261116-175816.jsonl)
 
-## Completed first DeepEval pass
+The RuntimeError-only retry is consolidated into the canonical directory. Thirteen previously errored metrics across twelve cases were replaced with their latest retry outcomes. Valid original scores, including low scores, were preserved. Original/retry artifacts, request events and checkpoint histories are retained under `attempts/` inside that directory. The separate retry directory has been removed. Raw attempt files are provenance, not additional benchmarks.
 
-| Metric | Mean of valid scores | Passed/scored | Errors | Not applicable |
-|---|---:|---:|---:|---:|
-| Application integrity | 0.967 | 29/30 | 0 | 0 |
-| Reference correctness [GEval] | 0.900 | 15/16 | 14 | 0 |
-| Answer Relevancy | 0.971 | 16/17 | 12 | 1 |
-| Faithfulness | 1.000 | 13/13 | 14 | 3 |
-| Contextual Precision | 0.527 | 3/16 | 7 | 7 |
-| Contextual Recall | 0.953 | 15/16 | 7 | 7 |
-| Contextual Relevancy | 0.417 | 2/13 | 15 | 2 |
+## Scope and configuration
 
-The run attempted all 30 cases. Sixty-nine judge-metric execution errors occurred across 20 cases; they are neither zero-valued quality scores nor successful grades. One case passed every applicable metric in this first pass. Partial later retries were stopped on request and archived; they are not combined into this scorecard.
+Five financial PDFs, three pages each; 30 golden questions, 55 PDF-verified evidence references, frozen reference date 2026-11-15. Generator and judge: `gpt-6.1-sol` via the configured local Codex gateway. Embeddings: pinned `BAAI/bge-base-en-v1.5`, 768 dimensions. Ingestion: Docling with `docling_source_aware_v2` chunking, 450-token maximum and soft 100-body-token target. The corpus has 44 chunks/embeddings; replaying the earlier settings on the same extraction produced 60 chunks.
 
-FIN-011 scores 0.6 for reference correctness despite 1.0 faithfulness: its claims are supported, but its answer is incomplete. FIN-027 context recall is 0.5 because the reference includes an application security expectation absent from document evidence. FIN-028 is a correct no-source API rejection with a generic harness message and Answer Relevancy 0.5, not a generated-answer example.
+Evaluation protocol: `durable_batched_v2`. Contextual relevance is batched with per-item/statement verdicts; answer relevance and faithfulness use one structured call each; precision/recall omit extra reason-generation calls. Faithfulness penalizes ambiguous/unsupported claims. These prompts/settings differ from older staged protocols, so their scores are not combined. Same-model generation/judging is correlated, not independent validation.
 
-Contextual Precision evaluates the actual synthesis-ledger order, which is evidence-ID order rather than raw vector/RRF rank. There are 480 delivered passages across 28 nonempty contexts (median 11, maximum 48). The compare tool loads whole selected revisions. Low context precision/relevance therefore cannot be attributed solely to embedding quality. No vector dimension/profile/normalization defect was found in the inspected 60-vector corpus.
+## Consolidated scorecard
 
-## Reproducible artifacts
+All **30 cases processed**; **20 cases have no metric execution errors**, and **10 cases still have at least one error**. An execution error is not an incorrect-answer score. Means below use successfully scored cases only. There is no unprocessed case.
 
-- [Golden dataset](../evaluation/financial-v1/golden.jsonl), [source manifest](../evaluation/financial-v1/manifest.json), [validation](../evaluation/financial-v1/validation.json).
-- [Saved 30 application predictions](../evaluation/financial-v1/results-codex-gpt-6.1-sol-20261116-30.jsonl) and [attempt provenance](../evaluation/financial-v1/codex-all-30-manifest.json). Supporting partial development batches were removed from the submission and archived locally. Historical source-file strings in the consolidated rows are audit labels; the consolidated file remains byte-for-byte unchanged.
-- [Completed DeepEval summary](../evaluation/deepeval_suite/results/codex-gpt-6.1-sol-30/summary.json) and [per-case metrics/reasons](../evaluation/deepeval_suite/results/codex-gpt-6.1-sol-30/results.jsonl).
-- [UI replay](../output/pdf/financial-ui-tests/ui-results-codex-all-30.json).
-- [Manual evaluation instructions](../evaluation/deepeval_suite/RUNNING.md).
+| Metric | Mean | Scored | Passed | Failed | Errors | Not applicable |
+|---|---:|---:|---:|---:|---:|---:|
+| Application integrity | 0.933 | 30 | 28 | 2 | 0 | 0 |
+| Reference correctness [GEval] | 0.883 | 30 | 26 | 4 | 0 | 0 |
+| Answer Relevancy | 0.962 | 29 | 27 | 2 | 0 | 1 |
+| Faithfulness | 0.952 | 27 | 23 | 4 | 0 | 3 |
+| Contextual Precision | 0.466 | 23 | 4 | 19 | 0 | 7 |
+| Contextual Recall | 0.953 | 23 | 21 | 2 | 0 | 7 |
+| Contextual Relevancy | 0.316 | 18 | 3 | 15 | 10 | 2 |
 
-The source/model failures and low scores are intentionally preserved. No model-based evaluation was run or altered during submission cleanup.
+The ten remaining errors are all Contextual Relevancy: **three provider deadline errors and seven invalid/missing/duplicate context-ID responses**. They remain unscored. All other applicable metric executions now have scores. Do not report the context-relevance mean as coverage of all 30 cases.
 
-## Restored LFM comparison and planned automation
+Remaining error cases: FIN-001, FIN-012, FIN-013, FIN-015, FIN-016, FIN-021, FIN-026, FIN-027, FIN-029, FIN-030.
 
-The historical 30-case LFM evaluation is restored in [20261115T134006Z](../evaluation/deepeval_suite/results/20261115T134006Z/summary.json), with original case records and matching application predictions. It measured only application integrity, reference correctness and faithfulness. See [the model comparison](lfm-vs-gpt-sol-findings.md) for why its low scores cannot be attributed simply to chunk size or embedding dimension.
+## Interpretation
 
-See [the automation plan](evaluation-automation-plan.md) for current metric coverage, MRR/nDCG label requirements, latency/token/cost and retrieval-health instrumentation, CI/scheduled workflows and regression criteria. No new model evaluation or scoring-policy change was made for this plan.
+- Correctness, answer relevance, strict faithfulness and context recall are comparatively strong on the scored synthetic cases; material failures remain, so these are not production accuracy claims.
+- Contextual precision (0.466) and contextual relevance (0.316 on 18 scored cases) indicate substantial excess irrelevant final synthesis context. Better chunk sizes alone do not fix relevance selection, evidence packing or follow-up reasoning.
+- The context metrics use evidence-ledger order, not raw vector/keyword candidate ranking. MRR/nDCG are not measured; they require ordered retrieval artifacts and reviewed relevance labels.
+- Application lexical/integrity diagnostics passed 27/30. FIN-010 omitted the additional CFO approver; FIN-011 answered no early destruction but omitted benchmark-required retention/citation detail; FIN-030 is an apparent date-format false negative. These diagnostics are distinct from the DeepEval Application integrity metric (28/30).
+- Per-case seconds/request counters describe their recorded invocations and may include checkpoint reuse. Original and retry invocation counters are retained separately. Use request-event history for actual attempts; do not add case timings as an application response-time SLA.
+- Returned token usage is logged where available. `evaluation_cost: null` means unknown monetary cost; no configured/billed price is inferred from Codex subscription usage. Failed requests can have unknown usage.
+
+## Current limits and next work
+
+The detached runner has atomic per-metric checkpoints, compatible resume, capped attempts, endpoint locking and provider-failure handling. It does not guarantee upstream cancellation/exactly-once billing, automatically restart after reboot, run Temporal, or automatically publish evaluator scores into Langfuse. Source traces and the golden dataset exist in Langfuse, but local evaluator scores remain local.
+
+See the consolidated [automation and durability plan](evaluation-automation-plan.md) for current commands, next-phase Temporal orchestration, and the subsequent LangGraph evaluator assessment. No additional model calls were made during this cleanup/consolidation.

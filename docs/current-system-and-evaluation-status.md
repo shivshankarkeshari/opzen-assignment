@@ -75,50 +75,8 @@ Official feature references: [Langfuse LLM-as-judge](https://langfuse.com/docs/e
 
 The scored corpus has five native-text financial PDFs, not a broad real-world contract/regulatory corpus. Word and scanned-PDF examples can be generated for demonstrations, but the financial golden-set scores do not validate those formats. The local [performance smoke test](performance-and-cost.md) measures retrieval/API reads; it does not establish ingestion throughput, answer latency, production concurrency or actual billed cost.
 
-## 4. What was evaluated
+## 4. Current evaluation status
 
-The 30-case set covers direct lookup, policy thresholds, historical scope, cross-page subsection completion, named-authority multi-hop questions, follow-ups, two-document comparisons, true/false conflicts, unresolved precedence, missing information, clarification, restricted access, quoted prompt injection and an exact threshold boundary. It contains **55 source-verified references** with frozen effective date **2026-11-15**.
+The latest 30-case consolidated run is documented in [evaluation results](evaluation-results.md), the authoritative scorecard with per-metric denominators and remaining errors. It uses the updated source-aware chunker, pinned 768-dimensional BGE embeddings and `gpt-6.1-sol` generation/judging. Application integrity passed 28/30; 20 cases have no metric execution errors and 10 retain context-relevancy errors. No ranking MRR/nDCG or production-scale accuracy claim is made.
 
-| Evaluation side | Current evidence/status |
-|---|---|
-| Dataset integrity | Five original three-page PDF hashes, case schemas, permission/scope references and 55 quotes validated offline. |
-| Application regression tests | Latest verification: **24 passed; 16 integration tests skipped** by their environment gate. Mocked-model tests verify control flow, not real-model reasoning. |
-| Evaluator regression tests | **12 passed** after shared-env/root-config changes; mocked HTTP and configuration checks, no new judge calls. |
-| UI replay | **64/64 rendering checks passed** across 29 saved outcomes. The expected no-source API rejection has no saved answer view. Rendering is separate from quality. |
-| Retained application run | All 30 outcomes collected; **28/30 automatic diagnostics passed**, with no remaining provider-blocked application outcomes after documented retries. |
-| Retained DeepEval run | All 30 cases attempted; **29/30 application-integrity passes**, **69 judge-metric errors across 20 cases**. Full semantic coverage was not achieved. |
-| Langfuse evaluation | Dataset verified; stage traces verified. No automatic DeepEval score import or dataset-experiment linkage implemented. Native evaluator configuration/score population was not inspected. |
-
-Automatic diagnostics include indicative fact terms, exact citations, minimum cited-document counts, allowed source scope, prohibited output strings, nonempty required answers and the exploration cap. They do not establish semantic entailment. Human or independent-model review remains necessary.
-
-### Completed 30-case DeepEval first pass
-
-| Metric | Threshold | Mean of valid scores | Passed/scored | Judge errors | Not applicable |
-|---|---:|---:|---:|---:|---:|
-| Application integrity | 1.0 | 0.967 | 29/30 | 0 | 0 |
-| Reference correctness (G-Eval) | 0.7 | 0.900 | 15/16 | 14 | 0 |
-| Answer Relevancy | 0.7 | 0.971 | 16/17 | 12 | 1 |
-| Faithfulness | 0.8 | 1.000 | 13/13 | 14 | 3 |
-| Contextual Precision | 0.7 | 0.527 | 3/16 | 7 | 7 |
-| Contextual Recall | 0.7 | 0.953 | 15/16 | 7 | 7 |
-| Contextual Relevancy | 0.7 | 0.417 | 2/13 | 15 | 2 |
-
-These means exclude errors and inapplicable metrics. In particular, faithfulness 1.0 on 13 scored cases is **not** faithfulness 1.0 on all 30. Interrupted later retries were archived and are not merged into this table. See the retained [summary](../evaluation/deepeval_suite/results/codex-gpt-6.1-sol-30/summary.json) and [per-case records](../evaluation/deepeval_suite/results/codex-gpt-6.1-sol-30/results.jsonl).
-
-### Restored LFM baseline
-
-The historical `lfm3-omni-2b` run is restored under `evaluation/deepeval_suite/results/20261115T134006Z/`, alongside its original application prediction file. It evaluated application integrity, reference correctness and faithfulness only. See [the LFM versus GPT-SOL findings](lfm-vs-gpt-sol-findings.md) for metric denominators, concrete failures and comparison caveats. The original archived copy and raw scores are unchanged.
-
-## 5. Interpreting the findings
-
-1. **Supported is not necessarily complete.** FIN-011 has faithfulness 1.0 but correctness 0.6: it denies a retention waiver but omits the seven-year minimum and second required citation.
-2. **Lexical diagnostics can falsely fail.** FIN-030 states the correct equivalent expiry date in words; the ISO-date term check fails, while reference correctness is 1.0.
-3. **Context packing needs work.** The retained 30-case run delivered 480 passages across 28 nonempty contexts (median 11, maximum 48). Final evidence is serialized by evidence ID; comparison loads entire selected revisions. Context precision therefore measures that delivered order, not raw BGE/RRF ranking. Low precision/relevance is not sufficient evidence to replace the embedding model.
-4. **Reference design affects recall scores.** FIN-027's reference includes an application security expectation absent from document evidence, reducing context recall despite retrieving the correct name. FIN-028 is a correct no-source API rejection whose generic harness message scores Answer Relevancy 0.5. Keep these measurement caveats visible.
-5. **Execution errors are not quality failures.** Provider deadlines/usage limits must remain separate from wrong answers and from honest abstentions. No extra retries, scoring changes or model fixes were made for this document.
-
-The next priorities are independent reviewed evaluation, required-fact coverage before sufficient stops, relevance-preserving context packing, durable score/experiment linkage in Langfuse, production identity and capacity testing. The current system is a working evidence-oriented prototype with observable, reproducible limits—not a certified financial-policy authority.
-
-Related documents: [evaluation report](evaluation-results.md), [manual run commands](../evaluation/deepeval_suite/RUNNING.md), [demo guide](demo.md), [architecture](design/architecture.md), [database design](design/database.md).
-
-Evaluation coverage and planned automation: [automation plan](evaluation-automation-plan.md). MRR, nDCG and aggregated operational SLO/cost gates are proposed, not already implemented.
+The detached runner and future Temporal/LangGraph phases are documented in the [automation and durability plan](evaluation-automation-plan.md). Langfuse traces/datasets do not imply automatic score synchronization. Same-model judging and synthetic examples require independent human calibration before acceptance.
